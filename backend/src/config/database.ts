@@ -1,0 +1,243 @@
+import sqlite3 from 'sqlite3';
+import path from 'path';
+import fs from 'fs';
+import { UserRole, SuggestionStatus } from '../types';
+
+const dbPath = process.env.DB_PATH || './data/community.db';
+const dbDir = path.dirname(dbPath);
+
+// 确保数据目录存在
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true });
+}
+
+export const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error('Error opening database:', err);
+  } else {
+    console.log('Connected to SQLite database');
+    initializeDatabase();
+  }
+});
+
+function initializeDatabase() {
+  // 创建用户表
+  db.run(`
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      phone TEXT UNIQUE NOT NULL,
+      password TEXT NOT NULL,
+      name TEXT NOT NULL,
+      role TEXT NOT NULL,
+      building TEXT,
+      room TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // 创建建议表
+  db.run(`
+    CREATE TABLE IF NOT EXISTS suggestions (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      category TEXT NOT NULL,
+      submitted_by TEXT NOT NULL,
+      submitted_by_user_id TEXT,
+      submitted_date DATETIME NOT NULL,
+      status TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (submitted_by_user_id) REFERENCES users(id)
+    )
+  `);
+
+  // 创建建议进度更新表
+  db.run(`
+    CREATE TABLE IF NOT EXISTS suggestion_progress (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      suggestion_id TEXT NOT NULL,
+      update_text TEXT NOT NULL,
+      date DATETIME NOT NULL,
+      by_user TEXT NOT NULL,
+      by_role TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (suggestion_id) REFERENCES suggestions(id) ON DELETE CASCADE
+    )
+  `);
+
+  // 创建二手市场表
+  db.run(`
+    CREATE TABLE IF NOT EXISTS market_items (
+      id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      description TEXT NOT NULL,
+      price REAL NOT NULL,
+      category TEXT NOT NULL,
+      image_url TEXT,
+      seller TEXT NOT NULL,
+      seller_user_id TEXT,
+      posted_date DATETIME NOT NULL,
+      contact_info TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (seller_user_id) REFERENCES users(id)
+    )
+  `);
+
+  // 创建公告表
+  db.run(`
+    CREATE TABLE IF NOT EXISTS announcements (
+      id TEXT PRIMARY KEY,
+      content TEXT NOT NULL,
+      author_id TEXT NOT NULL,
+      author_name TEXT NOT NULL,
+      role_of_author TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (author_id) REFERENCES users(id)
+    )
+  `);
+
+  // 插入初始数据
+  insertInitialData();
+}
+
+function insertInitialData() {
+  // 检查是否已有用户数据
+  db.get('SELECT COUNT(*) as count FROM users', (err, row: any) => {
+    if (err) {
+      console.error('Error checking users:', err);
+      return;
+    }
+
+    if (row.count === 0) {
+      // 插入初始用户
+      const initialUsers = [
+        {
+          id: 'user1',
+          phone: '13800138000',
+          password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password123
+          name: '张三 (1栋-101)',
+          role: UserRole.USER,
+          building: '1栋',
+          room: '101'
+        },
+        {
+          id: 'user2',
+          phone: '13900139000',
+          password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password123
+          name: '李四 (2栋-202)',
+          role: UserRole.USER,
+          building: '2栋',
+          room: '202'
+        },
+        {
+          id: 'prop1',
+          phone: 'property_phone_01',
+          password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // property123
+          name: '物业小王',
+          role: UserRole.PROPERTY,
+          building: null,
+          room: null
+        },
+        {
+          id: 'admin1',
+          phone: 'admin_phone_01',
+          password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // admin123
+          name: '管理员小赵',
+          role: UserRole.ADMIN,
+          building: null,
+          room: null
+        },
+        {
+          id: 'admin2',
+          phone: 'admin',
+          password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // admin
+          name: '超级管理员',
+          role: UserRole.ADMIN,
+          building: null,
+          room: null
+        }
+      ];
+
+      const userStmt = db.prepare(`
+        INSERT INTO users (id, phone, password, name, role, building, room)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      initialUsers.forEach(user => {
+        userStmt.run([user.id, user.phone, user.password, user.name, user.role, user.building, user.room]);
+      });
+
+      userStmt.finalize();
+
+      // 插入初始建议
+      const initialSuggestions = [
+        {
+          id: 's1',
+          title: '修复1号楼电梯异响',
+          description: '1号楼的电梯最近运行时有奇怪的响声，希望能尽快检查维修。',
+          category: '公共维修',
+          submittedBy: '张三 (1栋-101)',
+          submittedByUserId: 'user1',
+          submittedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          status: SuggestionStatus.Submitted
+        },
+        {
+          id: 's2',
+          title: '增加小区内宠物活动区域',
+          description: '建议在小区花园旁开辟一小块区域供宠物活动，并设置相关设施。',
+          category: '环境绿化',
+          submittedBy: '李四 (2栋-202)',
+          submittedByUserId: 'user2',
+          submittedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+          status: SuggestionStatus.InProgress
+        }
+      ];
+
+      const suggestionStmt = db.prepare(`
+        INSERT INTO suggestions (id, title, description, category, submitted_by, submitted_by_user_id, submitted_date, status)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      initialSuggestions.forEach(suggestion => {
+        suggestionStmt.run([
+          suggestion.id,
+          suggestion.title,
+          suggestion.description,
+          suggestion.category,
+          suggestion.submittedBy,
+          suggestion.submittedByUserId,
+          suggestion.submittedDate,
+          suggestion.status
+        ]);
+      });
+
+      suggestionStmt.finalize();
+
+      // 插入建议进度更新
+      db.run(`
+        INSERT INTO suggestion_progress (suggestion_id, update_text, date, by_user, by_role)
+        VALUES ('s2', '物业已收到建议，正在评估可行性。', ?, '物业系统', 'PROPERTY')
+      `, [new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()]);
+
+      // 插入初始市场物品
+      db.run(`
+        INSERT INTO market_items (id, title, description, price, category, image_url, seller, posted_date, contact_info)
+        VALUES ('m1', '九成新婴儿床', '宝宝长大了用不上了，实木婴儿床，几乎全新，带床垫。', 300, '母婴用品', 'https://picsum.photos/seed/m1/400/300', '业主赵 (非特定用户)', ?, '微信: zhaoliu123')
+      `, [new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()]);
+
+      // 插入初始公告
+      db.run(`
+        INSERT INTO announcements (id, content, author_id, author_name, role_of_author)
+        VALUES ('anno1', '近期将组织小区消防演练，请各位业主关注后续通知，积极参与。', 'admin1', '管理员小赵', 'ADMIN')
+      `);
+
+      console.log('Initial data inserted successfully');
+    }
+  });
+}
+
+export default db; 

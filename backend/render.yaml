@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: smart-community-backend
+    env: node
+    plan: free
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_EXPIRES_IN
+        value: 7d
+      - key: DB_PATH
+        value: ./data/community.db
+      - key: UPLOAD_DIR
+        value: ./uploads
+      - key: MAX_FILE_SIZE
+        value: 5242880
+      - key: LOG_LEVEL
+        value: info
+    disk:
+      name: data
+      mountPath: /app/data
+      sizeGB: 1 

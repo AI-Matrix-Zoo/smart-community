@@ -1,0 +1,206 @@
+import express, { Response } from 'express';
+import Joi from 'joi';
+import { db } from '../config/database';
+import { authenticateToken } from '../middleware/auth';
+import { AuthenticatedRequest, MarketItem } from '../types';
+
+const router = express.Router();
+
+// 验证schema
+const marketItemSchema = Joi.object({
+  title: Joi.string().required().messages({
+    'string.empty': '标题不能为空',
+    'any.required': '标题是必填项'
+  }),
+  description: Joi.string().required().messages({
+    'string.empty': '描述不能为空',
+    'any.required': '描述是必填项'
+  }),
+  price: Joi.number().positive().required().messages({
+    'number.positive': '价格必须大于0',
+    'any.required': '价格是必填项'
+  }),
+  category: Joi.string().required().messages({
+    'string.empty': '分类不能为空',
+    'any.required': '分类是必填项'
+  }),
+  imageUrl: Joi.string().uri().optional(),
+  contactInfo: Joi.string().optional()
+});
+
+// 获取所有市场物品
+router.get('/', (req, res: Response): void => {
+  db.all(
+    'SELECT * FROM market_items ORDER BY posted_date DESC',
+    [],
+    (err: any, rows: any[]): void => {
+      if (err) {
+        res.status(500).json({
+          success: false,
+          message: '获取市场物品失败'
+        });
+        return;
+      }
+
+      const items = rows.map(row => ({
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        price: row.price,
+        category: row.category,
+        imageUrl: row.image_url,
+        seller: row.seller,
+        sellerUserId: row.seller_user_id,
+        postedDate: row.posted_date,
+        contactInfo: row.contact_info
+      }));
+
+      res.json({
+        success: true,
+        data: items
+      });
+    }
+  );
+});
+
+// 发布新物品
+router.post('/', authenticateToken, (req: AuthenticatedRequest, res: Response): void => {
+  const { error } = marketItemSchema.validate(req.body);
+  if (error) {
+    res.status(400).json({
+      success: false,
+      message: error.details[0].message
+    });
+    return;
+  }
+
+  const { title, description, price, category, imageUrl, contactInfo } = req.body;
+  const user = req.user!;
+  const itemId = `m${Date.now()}`;
+
+  db.run(
+    `INSERT INTO market_items (id, title, description, price, category, image_url, seller, seller_user_id, posted_date, contact_info)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [itemId, title, description, price, category, imageUrl, user.name || user.phone, user.userId, new Date().toISOString(), contactInfo],
+    function(err: any): void {
+      if (err) {
+        res.status(500).json({
+          success: false,
+          message: '发布物品失败'
+        });
+        return;
+      }
+
+      const newItem: MarketItem = {
+        id: itemId,
+        title,
+        description,
+        price,
+        category,
+        imageUrl: imageUrl || '',
+        seller: user.name || user.phone,
+        sellerUserId: user.userId,
+        postedDate: new Date().toISOString(),
+        contactInfo
+      };
+
+      res.status(201).json({
+        success: true,
+        data: newItem,
+        message: '物品发布成功'
+      });
+    }
+  );
+});
+
+// 获取用户自己的物品
+router.get('/my-items', authenticateToken, (req: AuthenticatedRequest, res: Response): void => {
+  const user = req.user!;
+
+  db.all(
+    'SELECT * FROM market_items WHERE seller_user_id = ? ORDER BY posted_date DESC',
+    [user.userId],
+    (err: any, rows: any[]): void => {
+      if (err) {
+        res.status(500).json({
+          success: false,
+          message: '获取我的物品失败'
+        });
+        return;
+      }
+
+      const items = rows.map(row => ({
+        id: row.id,
+        title: row.title,
+        description: row.description,
+        price: row.price,
+        category: row.category,
+        imageUrl: row.image_url,
+        seller: row.seller,
+        sellerUserId: row.seller_user_id,
+        postedDate: row.posted_date,
+        contactInfo: row.contact_info
+      }));
+
+      res.json({
+        success: true,
+        data: items
+      });
+    }
+  );
+});
+
+// 删除物品（仅限物品发布者）
+router.delete('/:id', authenticateToken, (req: AuthenticatedRequest, res: Response): void => {
+  const { id } = req.params;
+  const user = req.user!;
+
+  // 先检查物品是否属于当前用户
+  db.get(
+    'SELECT seller_user_id FROM market_items WHERE id = ?',
+    [id],
+    (err: any, item: any): void => {
+      if (err) {
+        res.status(500).json({
+          success: false,
+          message: '服务器错误'
+        });
+        return;
+      }
+
+      if (!item) {
+        res.status(404).json({
+          success: false,
+          message: '物品不存在'
+        });
+        return;
+      }
+
+      if (item.seller_user_id !== user.userId) {
+        res.status(403).json({
+          success: false,
+          message: '只能删除自己发布的物品'
+        });
+        return;
+      }
+
+      // 删除物品
+      db.run('DELETE FROM market_items WHERE id = ?', [id], function(err: any): void {
+        if (err) {
+          res.status(500).json({
+            success: false,
+            message: '删除物品失败'
+          });
+          return;
+        }
+
+        res.json({
+          success: true,
+          message: '物品删除成功'
+        });
+      });
+    }
+  );
+});
+
+export default router; 
