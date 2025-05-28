@@ -19,5 +19,10 @@ export default defineConfig({
         }
       }
     }
+  },
+  // 预览模式下的SPA路由回退
+  preview: {
+    port: 4173,
+    host: true
   }
 })

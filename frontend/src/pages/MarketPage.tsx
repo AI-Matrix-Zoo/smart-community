@@ -63,6 +63,12 @@ const MarketPage: React.FC = () => {
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const auth = useContext(AuthContext);
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastUpdatedRef = useRef<Date>(new Date());
+
+  // 更新lastUpdatedRef当lastUpdated改变时
+  useEffect(() => {
+    lastUpdatedRef.current = lastUpdated;
+  }, [lastUpdated]);
 
   const fetchMarketItemsData = useCallback(async (showRefreshIndicator = false) => {
     if (showRefreshIndicator) {
@@ -102,14 +108,14 @@ const MarketPage: React.FC = () => {
     }, 30000);
   }, [fetchMarketItemsData]);
 
-  // 窗口焦点事件处理
+  // 窗口焦点事件处理 - 使用useCallback但不依赖lastUpdated
   const handleWindowFocus = useCallback(() => {
-    // 当窗口重新获得焦点时，如果距离上次更新超过10秒，则刷新数据
-    const timeSinceLastUpdate = Date.now() - lastUpdated.getTime();
+    // 使用ref来获取最新的lastUpdated值，避免依赖问题
+    const timeSinceLastUpdate = Date.now() - lastUpdatedRef.current.getTime();
     if (timeSinceLastUpdate > 10000) {
       fetchMarketItemsData(true);
     }
-  }, [fetchMarketItemsData, lastUpdated]);
+  }, [fetchMarketItemsData]);
 
   useEffect(() => {
     fetchMarketItemsData();

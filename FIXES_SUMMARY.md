@@ -7,19 +7,38 @@
 **问题描述**: 
 - 用户在登录后进入二手市场页面，刷新浏览器会返回"Not Found"错误
 - 这是单页应用(SPA)的经典问题，服务器不知道如何处理客户端路由
+- 问题同时存在于本地开发环境和生产环境
 
 **解决方案**:
+
+**生产环境 (Render平台)**:
 - 创建了 `frontend/public/_redirects` 文件，配置所有路径重定向到 `index.html`
 - 更新了 `frontend/render.yaml` 配置，添加了正确的SPA路由重定向规则
 - 优化了缓存策略：静态资源长期缓存，HTML文件不缓存
 
+**本地开发环境**:
+- 移除了 `frontend/index.html` 中干扰Vite模块解析的 `importmap` 配置
+- Vite开发服务器默认支持SPA路由回退，移除干扰配置后正常工作
+- 所有路由现在都返回200状态码和正确的HTML页面
+
 **技术细节**:
 ```yaml
+# 生产环境配置 (render.yaml)
 routes:
   - type: rewrite
     source: /*
     destination: /index.html
 ```
+
+```html
+<!-- 移除了干扰的importmap配置 -->
+<!-- <script type="importmap">...</script> -->
+```
+
+**测试验证**:
+- ✅ 本地开发环境：所有路由 (/, /market, /suggestions, /login, /register, /admin) 都返回200
+- ✅ 刷新 http://localhost:5173/market 不再出现404错误
+- ✅ 直接访问任何路由都正常工作
 
 ### 2. 二手市场数据实时更新 ✅
 
