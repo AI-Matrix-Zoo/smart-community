@@ -1,9 +1,8 @@
-
 import React from 'react';
 import { XMarkIcon } from './Icons';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'outline';
   size?: 'sm' | 'md' | 'lg';
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
@@ -17,6 +16,7 @@ export const Button: React.FC<ButtonProps> = ({ variant = 'primary', size = 'md'
     secondary: 'bg-secondary text-white hover:bg-secondary-dark focus:ring-secondary',
     danger: 'bg-red-500 text-white hover:bg-red-600 focus:ring-red-500',
     ghost: 'bg-transparent text-slate-700 hover:bg-slate-200 focus:ring-primary',
+    outline: 'bg-transparent border border-slate-300 text-slate-700 hover:bg-slate-50 focus:ring-primary',
   };
 
   const sizeStyles = {

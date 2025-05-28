@@ -1,9 +1,8 @@
-
-import React, { useState, useEffect, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import { MarketItem } from '../types';
 import { getMarketItems, addMarketItem } from '../services/dataService';
 import { Button, LoadingSpinner, Modal, Badge } from '../components/UIElements';
-import { PlusCircleIcon, ShoppingBagIcon } from '../components/Icons';
+import { PlusCircleIcon, ShoppingBagIcon, ArrowPathIcon } from '../components/Icons';
 import MarketItemForm from '../components/MarketItemForm';
 import { AuthContext } from '../contexts/AuthContext';
 
@@ -54,37 +53,94 @@ const MarketItemDetailModal: React.FC<{item: MarketItem | null; isOpen: boolean;
   );
 }
 
-
 const MarketPage: React.FC = () => {
   const [marketItems, setMarketItems] = useState<MarketItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MarketItem | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const auth = useContext(AuthContext);
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchMarketItemsData = useCallback(async () => {
-    setIsLoading(true);
+  const fetchMarketItemsData = useCallback(async (showRefreshIndicator = false) => {
+    if (showRefreshIndicator) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
     setError(null);
     try {
       const data = await getMarketItems();
       setMarketItems(data);
+      setLastUpdated(new Date());
     } catch (err) {
       setError('获取闲置物品列表失败，请稍后重试。');
       console.error(err);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
+  // 手动刷新
+  const handleManualRefresh = useCallback(() => {
+    fetchMarketItemsData(true);
+  }, [fetchMarketItemsData]);
+
+  // 设置定期刷新
+  const setupAutoRefresh = useCallback(() => {
+    // 清除现有的定时器
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+    }
+    
+    // 每30秒自动刷新一次
+    refreshIntervalRef.current = setInterval(() => {
+      fetchMarketItemsData(true);
+    }, 30000);
+  }, [fetchMarketItemsData]);
+
+  // 窗口焦点事件处理
+  const handleWindowFocus = useCallback(() => {
+    // 当窗口重新获得焦点时，如果距离上次更新超过10秒，则刷新数据
+    const timeSinceLastUpdate = Date.now() - lastUpdated.getTime();
+    if (timeSinceLastUpdate > 10000) {
+      fetchMarketItemsData(true);
+    }
+  }, [fetchMarketItemsData, lastUpdated]);
+
   useEffect(() => {
     fetchMarketItemsData();
-  }, [fetchMarketItemsData]);
+    setupAutoRefresh();
+
+    // 添加窗口焦点事件监听
+    window.addEventListener('focus', handleWindowFocus);
+    
+    // 添加页面可见性变化监听
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        handleWindowFocus();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      // 清理定时器和事件监听
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+      window.removeEventListener('focus', handleWindowFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchMarketItemsData, setupAutoRefresh, handleWindowFocus]);
 
   const handleAddItem = async (itemData: Omit<MarketItem, 'id' | 'postedDate'>) => {
     try {
       await addMarketItem(itemData);
-      fetchMarketItemsData(); 
+      // 立即刷新数据以显示新添加的物品
+      fetchMarketItemsData(true); 
     } catch (err) {
        alert('发布物品失败，请重试。');
       console.error(err);
@@ -99,24 +155,49 @@ const MarketPage: React.FC = () => {
     setSelectedItem(null);
   };
 
-
   if (isLoading) {
     return <div className="flex justify-center items-center h-64"><LoadingSpinner size="lg" /></div>;
   }
 
   if (error) {
-    return <div className="text-center text-red-500 bg-red-100 p-4 rounded-md">{error}</div>;
+    return (
+      <div className="space-y-4">
+        <div className="text-center text-red-500 bg-red-100 p-4 rounded-md">{error}</div>
+        <div className="text-center">
+          <Button variant="primary" onClick={handleManualRefresh} disabled={isRefreshing}>
+            {isRefreshing ? '重试中...' : '重试'}
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-slate-800">小区闲置市场</h1>
-        { auth?.currentUser && (
-            <Button variant="secondary" onClick={() => setIsFormOpen(true)} leftIcon={<PlusCircleIcon className="w-5 h-5" />}>
-                发布闲置
-            </Button>
-        )}
+        <div>
+          <h1 className="text-3xl font-bold text-slate-800">小区闲置市场</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            最后更新: {lastUpdated.toLocaleTimeString()} 
+            {isRefreshing && <span className="ml-2 text-blue-500">刷新中...</span>}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleManualRefresh} 
+            disabled={isRefreshing}
+            leftIcon={<ArrowPathIcon className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
+            size="sm"
+          >
+            刷新
+          </Button>
+          { auth?.currentUser && (
+              <Button variant="secondary" onClick={() => setIsFormOpen(true)} leftIcon={<PlusCircleIcon className="w-5 h-5" />}>
+                  发布闲置
+              </Button>
+          )}
+        </div>
       </div>
 
       <MarketItemForm

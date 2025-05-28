@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import { Suggestion, SuggestionStatus, UserRole } from '../types';
 import { getSuggestions, addSuggestion, updateSuggestionStatus, addSuggestionProgress } from '../services/dataService';
 import { Button, LoadingSpinner, Badge, Modal, Textarea, Select } from '../components/UIElements';
-import { PlusCircleIcon, ChevronDownIcon, ChatBubbleLeftEllipsisIcon, LightbulbIcon } from '../components/Icons';
+import { PlusCircleIcon, ChevronDownIcon, ChatBubbleLeftEllipsisIcon, LightbulbIcon, ArrowPathIcon } from '../components/Icons';
 import SuggestionForm from '../components/SuggestionForm';
 import { AuthContext } from '../contexts/AuthContext';
 
@@ -147,32 +147,90 @@ const SuggestionItem: React.FC<{
 const SuggestionsPage: React.FC = () => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const auth = useContext(AuthContext);
+  const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const fetchSuggestionsData = useCallback(async () => {
-    setIsLoading(true);
+  const fetchSuggestionsData = useCallback(async (showRefreshIndicator = false) => {
+    if (showRefreshIndicator) {
+      setIsRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
     setError(null);
     try {
       const data = await getSuggestions();
       setSuggestions(data);
+      setLastUpdated(new Date());
     } catch (err) {
       setError('获取建议列表失败，请稍后重试。');
       console.error(err);
     } finally {
       setIsLoading(false);
+      setIsRefreshing(false);
     }
   }, []);
 
+  // 手动刷新
+  const handleManualRefresh = useCallback(() => {
+    fetchSuggestionsData(true);
+  }, [fetchSuggestionsData]);
+
+  // 设置定期刷新
+  const setupAutoRefresh = useCallback(() => {
+    // 清除现有的定时器
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+    }
+    
+    // 每30秒自动刷新一次
+    refreshIntervalRef.current = setInterval(() => {
+      fetchSuggestionsData(true);
+    }, 30000);
+  }, [fetchSuggestionsData]);
+
+  // 窗口焦点事件处理
+  const handleWindowFocus = useCallback(() => {
+    // 当窗口重新获得焦点时，如果距离上次更新超过10秒，则刷新数据
+    const timeSinceLastUpdate = Date.now() - lastUpdated.getTime();
+    if (timeSinceLastUpdate > 10000) {
+      fetchSuggestionsData(true);
+    }
+  }, [fetchSuggestionsData, lastUpdated]);
+
   useEffect(() => {
     fetchSuggestionsData();
-  }, [fetchSuggestionsData]);
+    setupAutoRefresh();
+
+    // 添加窗口焦点事件监听
+    window.addEventListener('focus', handleWindowFocus);
+    
+    // 添加页面可见性变化监听
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        handleWindowFocus();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      // 清理定时器和事件监听
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+      window.removeEventListener('focus', handleWindowFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [fetchSuggestionsData, setupAutoRefresh, handleWindowFocus]);
 
   const handleAddSuggestion = async (suggestionData: Omit<Suggestion, 'id' | 'submittedDate' | 'status' | 'progressUpdates'>) => {
     try {
       await addSuggestion(suggestionData);
-      fetchSuggestionsData(); 
+      // 立即刷新数据以显示新添加的建议
+      fetchSuggestionsData(true);
     } catch (err) {
       alert('提交建议失败，请重试。');
       console.error(err);
@@ -202,18 +260,44 @@ const SuggestionsPage: React.FC = () => {
   }
 
   if (error) {
-    return <div className="text-center text-red-500 bg-red-100 p-4 rounded-md">{error}</div>;
+    return (
+      <div className="space-y-4">
+        <div className="text-center text-red-500 bg-red-100 p-4 rounded-md">{error}</div>
+        <div className="text-center">
+          <Button variant="primary" onClick={handleManualRefresh} disabled={isRefreshing}>
+            {isRefreshing ? '重试中...' : '重试'}
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-slate-800">物业建议箱</h1>
-        {auth?.currentUser && (
-             <Button variant="primary" onClick={() => setIsFormOpen(true)} leftIcon={<PlusCircleIcon className="w-5 h-5" />}>
-                提交新建议
-            </Button>
-        )}
+        <div>
+          <h1 className="text-3xl font-bold text-slate-800">建议反馈</h1>
+          <p className="text-sm text-slate-500 mt-1">
+            最后更新: {lastUpdated.toLocaleTimeString()} 
+            {isRefreshing && <span className="ml-2 text-blue-500">刷新中...</span>}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={handleManualRefresh} 
+            disabled={isRefreshing}
+            leftIcon={<ArrowPathIcon className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
+            size="sm"
+          >
+            刷新
+          </Button>
+          { auth?.currentUser && (
+              <Button variant="secondary" onClick={() => setIsFormOpen(true)} leftIcon={<PlusCircleIcon className="w-5 h-5" />}>
+                  提交建议
+              </Button>
+          )}
+        </div>
       </div>
 
       <SuggestionForm
