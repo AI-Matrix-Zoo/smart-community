@@ -1,7 +1,6 @@
-import React, { useState, useEffect, useCallback, useContext } from 'react';
-import { MarketItem, UserRole } from '../../types';
+import React, { useState, useEffect, useCallback } from 'react';
+import { MarketItem } from '../../types';
 import { getMarketItems, adminDeleteMarketItem } from '../../services/dataService';
-import { AuthContext } from '../../contexts/AuthContext';
 import { Button, LoadingSpinner, Badge, Modal } from '../UIElements';
 import { TrashIcon, ShoppingBagIcon } from '../Icons';
 
@@ -10,7 +9,6 @@ const MarketManagementTab: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [itemToView, setItemToView] = useState<MarketItem | null>(null);
-  const auth = useContext(AuthContext);
 
   const fetchItems = useCallback(async () => {
     setIsLoading(true);

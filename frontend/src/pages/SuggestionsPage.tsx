@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect, useCallback, useContext } from 'react';
-import { Suggestion, SuggestionStatus, SuggestionProgressUpdate, UserRole } from '../types';
+import { Suggestion, SuggestionStatus, UserRole } from '../types';
 import { getSuggestions, addSuggestion, updateSuggestionStatus, addSuggestionProgress } from '../services/dataService';
-import { Button, LoadingSpinner, Badge, Modal, Input, Textarea, Select } from '../components/UIElements';
+import { Button, LoadingSpinner, Badge, Modal, Textarea, Select } from '../components/UIElements';
 import { PlusCircleIcon, ChevronDownIcon, ChatBubbleLeftEllipsisIcon, LightbulbIcon } from '../components/Icons';
 import SuggestionForm from '../components/SuggestionForm';
 import { AuthContext } from '../contexts/AuthContext';

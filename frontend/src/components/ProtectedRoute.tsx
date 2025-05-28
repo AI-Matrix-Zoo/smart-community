@@ -1,7 +1,6 @@
-
-import React, { useContext } from 'react';
+import { useContext } from 'react';
 // Import React's specific named exports for type clarity
-import type { ReactElement, ReactNode } from 'react';
+import type { ReactElement } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
 import { UserRole } from '../types';
@@ -14,7 +13,7 @@ interface ProtectedRouteProps {
 }
 
 // The 'element' prop of react-router-dom's Route component expects React.ReactNode.
-const ProtectedRoute = ({ children, requiredRoles }: ProtectedRouteProps): ReactNode => {
+const ProtectedRoute = ({ children, requiredRoles }: ProtectedRouteProps): JSX.Element => {
   const auth = useContext(AuthContext);
   const location = useLocation();
 

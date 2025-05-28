@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User, UserRole } from '../../types';
-import { AuthContext } from '../../contexts/AuthContext';
 import { Button, Input, Select, Modal } from '../UIElements';
 
 interface UserEditModalProps {
@@ -11,7 +10,6 @@ interface UserEditModalProps {
 }
 
 const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, userToEdit, onSave }) => {
-  const auth = useContext(AuthContext);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [role, setRole] = useState<UserRole>(UserRole.USER);

@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect, useContext } from 'react';
-import { Suggestion, UserRole } from '../types';
+import { Suggestion } from '../types';
 import { AuthContext } from '../contexts/AuthContext';
 import { Button, Input, Textarea, Select, Modal } from './UIElements';
 

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
-import { Suggestion, SuggestionStatus, UserRole } from '../../types';
+import { Suggestion, SuggestionStatus } from '../../types';
 import { getSuggestions, updateSuggestionStatus, addSuggestionProgress, adminDeleteSuggestion } from '../../services/dataService';
 import { AuthContext } from '../../contexts/AuthContext';
 import { Button, LoadingSpinner, Badge, Modal, Select, Textarea } from '../UIElements';
-import { PencilIcon, TrashIcon, ChatBubbleLeftEllipsisIcon, LightbulbIcon, ChevronDownIcon } from '../Icons';
+import { TrashIcon, ChatBubbleLeftEllipsisIcon, LightbulbIcon, ChevronDownIcon } from '../Icons';
 
 const SuggestionManagementTab: React.FC = () => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
