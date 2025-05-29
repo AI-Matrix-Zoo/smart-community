@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import { Suggestion, SuggestionStatus, UserRole } from '../types';
-import { getSuggestions, addSuggestion, updateSuggestionStatus, addSuggestionProgress } from '../services/dataService';
+import { getSuggestions, addSuggestion, updateSuggestionStatus, addSuggestionProgress } from '../services/apiService';
 import { Button, LoadingSpinner, Badge, Modal, Textarea, Select } from '../components/UIElements';
 import { PlusCircleIcon, ChevronDownIcon, ChatBubbleLeftEllipsisIcon, LightbulbIcon, ArrowPathIcon } from '../components/Icons';
 import SuggestionForm from '../components/SuggestionForm';
-import { AuthContext } from '../contexts/AuthContext';
+import { AuthContext, useAuth } from '../contexts/AuthContext';
 
 const SuggestionItem: React.FC<{ 
     suggestion: Suggestion; 
@@ -109,7 +109,7 @@ const SuggestionItem: React.FC<{
                 onChange={(e) => setNewStatus(e.target.value as SuggestionStatus)}
               />
               <Textarea 
-                label={`状态更新说明 (${auth.currentUser?.name || '物业'}填写)`}
+                label={`状态更新说明 (${auth?.currentUser?.name || '物业'}填写)`}
                 placeholder="例如：已派维修师傅处理，预计明日完成。"
                 value={statusUpdateText}
                 onChange={(e) => setStatusUpdateText(e.target.value)}
@@ -125,7 +125,7 @@ const SuggestionItem: React.FC<{
           <Modal isOpen={showProgressModal} onClose={() => setShowProgressModal(false)} title="添加进展说明">
             <div className="space-y-4">
               <Textarea 
-                label={`进展内容 (${auth.currentUser?.name || '物业'}填写)`}
+                label={`进展内容 (${auth?.currentUser?.name || '物业'}填写)`}
                 placeholder="例如：已完成初步勘查，正在制定维修方案。"
                 value={progressText}
                 onChange={(e) => setProgressText(e.target.value)}
@@ -143,28 +143,33 @@ const SuggestionItem: React.FC<{
   );
 };
 
-
 const SuggestionsPage: React.FC = () => {
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
-  const auth = useContext(AuthContext);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const { currentUser, isLoadingAuth } = useAuth();
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastUpdatedRef = useRef<Date>(new Date());
+  const lastUpdatedRef = useRef<Date | null>(null);
 
-  // 更新lastUpdatedRef当lastUpdated改变时
   useEffect(() => {
     lastUpdatedRef.current = lastUpdated;
   }, [lastUpdated]);
 
   const fetchSuggestionsData = useCallback(async (showRefreshIndicator = false) => {
+    if (!currentUser) {
+      setIsDataLoading(false);
+      setIsRefreshing(false);
+      return;
+    }
+
     if (showRefreshIndicator) {
       setIsRefreshing(true);
     } else {
-      setIsLoading(true);
+      setIsDataLoading(true);
     }
     setError(null);
     try {
@@ -172,92 +177,108 @@ const SuggestionsPage: React.FC = () => {
       setSuggestions(data);
       setLastUpdated(new Date());
     } catch (err) {
-      setError('获取建议列表失败，请稍后重试。');
+      if (err instanceof Error && err.message.includes('401')) {
+        setError('您的登录已过期或无效，请重新登录后查看建议。');
+      } else {
+        setError('获取建议列表失败，请稍后重试。');
+      }
       console.error(err);
     } finally {
-      setIsLoading(false);
+      setIsDataLoading(false);
       setIsRefreshing(false);
     }
-  }, []);
+  }, [currentUser]);
 
-  // 手动刷新
+  useEffect(() => {
+    if (!isLoadingAuth && currentUser) {
+      fetchSuggestionsData();
+      setupAutoRefresh();
+    } else if (!isLoadingAuth && !currentUser) {
+      setSuggestions([]);
+      setIsLoading(false);
+      setError("请登录后查看或提交建议。");
+    }
+  }, [isLoadingAuth, currentUser, fetchSuggestionsData]);
+
   const handleManualRefresh = useCallback(() => {
-    fetchSuggestionsData(true);
-  }, [fetchSuggestionsData]);
+    if (currentUser) fetchSuggestionsData(true);
+  }, [fetchSuggestionsData, currentUser]);
 
-  // 设置定期刷新
   const setupAutoRefresh = useCallback(() => {
-    // 清除现有的定时器
     if (refreshIntervalRef.current) {
       clearInterval(refreshIntervalRef.current);
     }
-    
-    // 每30秒自动刷新一次
     refreshIntervalRef.current = setInterval(() => {
-      fetchSuggestionsData(true);
+      if (currentUser) fetchSuggestionsData(true);
     }, 30000);
-  }, [fetchSuggestionsData]);
+  }, [fetchSuggestionsData, currentUser]);
 
-  // 窗口焦点事件处理 - 使用useCallback但不依赖lastUpdated
   const handleWindowFocus = useCallback(() => {
-    // 使用ref来获取最新的lastUpdated值，避免依赖问题
+    if (!currentUser || !lastUpdatedRef.current) return;
     const timeSinceLastUpdate = Date.now() - lastUpdatedRef.current.getTime();
     if (timeSinceLastUpdate > 10000) {
       fetchSuggestionsData(true);
     }
-  }, [fetchSuggestionsData]);
+  }, [fetchSuggestionsData, currentUser]);
 
   useEffect(() => {
-    fetchSuggestionsData();
-    setupAutoRefresh();
+    if (!isLoadingAuth && currentUser) {
+      window.addEventListener('focus', handleWindowFocus);
+      const handleVisibilityChange = () => {
+        if (!document.hidden) {
+          handleWindowFocus();
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // 添加窗口焦点事件监听
-    window.addEventListener('focus', handleWindowFocus);
-    
-    // 添加页面可见性变化监听
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        handleWindowFocus();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => {
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+        }
+        window.removeEventListener('focus', handleWindowFocus);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+    }
+  }, [isLoadingAuth, currentUser, handleWindowFocus, setupAutoRefresh]);
 
-    return () => {
-      // 清理定时器和事件监听
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-      }
-      window.removeEventListener('focus', handleWindowFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [fetchSuggestionsData, setupAutoRefresh, handleWindowFocus]);
+  useEffect(() => {
+    if (!isLoadingAuth) {
+      setIsLoading(false);
+    }
+  }, [isLoadingAuth]);
 
-  const handleAddSuggestion = async (suggestionData: Omit<Suggestion, 'id' | 'submittedDate' | 'status' | 'progressUpdates'>) => {
+  const handleAddSuggestion = async (suggestionData: { title: string; description: string; category: string }) => {
+    if (!currentUser) {
+      alert("请先登录后再提交建议。");
+      return;
+    }
     try {
       await addSuggestion(suggestionData);
-      // 立即刷新数据以显示新添加的建议
       fetchSuggestionsData(true);
     } catch (err) {
-      alert('提交建议失败，请重试。');
-      console.error(err);
+      const errorMessage = err instanceof Error ? err.message : '提交建议失败，请重试。';
+      alert(`提交建议失败: ${errorMessage}`);
+      console.error('提交建议详细错误:', err);
     }
   };
-
+  
   const handleStatusChange = async (id: string, status: SuggestionStatus, updateText: string) => {
     try {
-      await updateSuggestionStatus(id, status, updateText); // dataService now handles who made the update
-      fetchSuggestionsData();
+      await updateSuggestionStatus(id, status, updateText);
+      fetchSuggestionsData(true);
     } catch (err) {
       alert('更新状态失败，请重试。');
+      console.error(err);
     }
   };
   
   const handleAddProgressUpdate = async (id: string, updateText: string) => {
-     try {
-      await addSuggestionProgress(id, updateText); // dataService now handles who made the update
-      fetchSuggestionsData();
+    try {
+      await addSuggestionProgress(id, updateText);
+      fetchSuggestionsData(true);
     } catch (err) {
       alert('添加进展失败，请重试。');
+      console.error(err);
     }
   };
 
@@ -265,61 +286,76 @@ const SuggestionsPage: React.FC = () => {
     return <div className="flex justify-center items-center h-64"><LoadingSpinner size="lg" /></div>;
   }
 
-  if (error) {
+  if (!currentUser && error) {
+    return (
+        <div className="text-center py-12">
+            <LightbulbIcon className="w-16 h-16 mx-auto text-slate-400 mb-4" />
+            <p className="text-xl text-slate-600 mb-2">{error}</p>
+            <Button variant="primary" onClick={() => window.location.href = '/login'}>前往登录</Button>
+        </div>
+    );
+  }
+  
+  if (currentUser && error) {
     return (
       <div className="space-y-4">
         <div className="text-center text-red-500 bg-red-100 p-4 rounded-md">{error}</div>
         <div className="text-center">
-          <Button variant="primary" onClick={handleManualRefresh} disabled={isRefreshing}>
-            {isRefreshing ? '重试中...' : '重试'}
+          <Button variant="primary" onClick={handleManualRefresh} disabled={isRefreshing || isDataLoading}>
+            {isRefreshing || isDataLoading ? '重试中...' : '重试'}
           </Button>
         </div>
       </div>
     );
   }
 
+  if (isDataLoading) {
+    return <div className="flex justify-center items-center h-64"><LoadingSpinner size="lg" /></div>;
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800">建议反馈</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            最后更新: {lastUpdated.toLocaleTimeString()} 
-            {isRefreshing && <span className="ml-2 text-blue-500">刷新中...</span>}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          <Button 
-            variant="outline" 
-            onClick={handleManualRefresh} 
-            disabled={isRefreshing}
-            leftIcon={<ArrowPathIcon className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
-            size="sm"
-          >
-            刷新
-          </Button>
-          { auth?.currentUser && (
-              <Button variant="secondary" onClick={() => setIsFormOpen(true)} leftIcon={<PlusCircleIcon className="w-5 h-5" />}>
-                  提交建议
-              </Button>
+          <h1 className="text-3xl font-bold text-slate-800">物业建议与反馈</h1>
+          {lastUpdated && (
+            <p className="text-sm text-slate-500 mt-1">
+              最后更新: {lastUpdated.toLocaleTimeString()} 
+              {isRefreshing && <span className="ml-2 text-blue-500">刷新中...</span>}
+            </p>
           )}
         </div>
+        {currentUser && (
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleManualRefresh} 
+              disabled={isRefreshing || isDataLoading}
+              leftIcon={<ArrowPathIcon className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
+              size="sm"
+            >
+              刷新
+            </Button>
+            <Button variant="secondary" onClick={() => setIsFormOpen(true)} leftIcon={<PlusCircleIcon className="w-5 h-5" />}>
+                我有建议
+            </Button>
+          </div>
+        )}
       </div>
 
-      <SuggestionForm
+      {currentUser && <SuggestionForm
         isOpen={isFormOpen}
         onClose={() => setIsFormOpen(false)}
         onSubmit={handleAddSuggestion}
-      />
-
-      {suggestions.length === 0 ? (
+      />}
+      
+      {suggestions.length === 0 && !isDataLoading && currentUser ? (
         <div className="text-center py-12 bg-white rounded-xl shadow-md">
           <LightbulbIcon className="w-16 h-16 mx-auto text-slate-400 mb-4" />
-          <p className="text-xl text-slate-600">目前还没有任何建议。</p>
-          {auth?.currentUser && <p className="text-slate-500">您可以点击右上角的按钮，成为第一个提交建议的人！</p>}
+          <p className="text-xl text-slate-600">暂无建议，期待您的声音！</p>
         </div>
       ) : (
-        <div className="grid md:grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="space-y-6">
           {suggestions.map((suggestion) => (
             <SuggestionItem 
                 key={suggestion.id} 
@@ -335,3 +371,4 @@ const SuggestionsPage: React.FC = () => {
 };
 
 export default SuggestionsPage;
+

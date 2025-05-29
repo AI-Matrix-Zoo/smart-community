@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { getMarketItems, adminDeleteMarketItem } from '../../services/apiService';
 import { MarketItem } from '../../types';
-import { getMarketItems, adminDeleteMarketItem } from '../../services/dataService';
 import { Button, LoadingSpinner, Badge, Modal } from '../UIElements';
 import { TrashIcon, ShoppingBagIcon } from '../Icons';
 

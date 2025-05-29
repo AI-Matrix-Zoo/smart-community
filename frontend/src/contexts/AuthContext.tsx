@@ -1,8 +1,16 @@
 import React, { createContext, useState, useEffect, useCallback, useContext } from 'react';
 import { User } from '../types';
-import { loginUser as apiLogin, logoutUser as apiLogout, getCurrentUser as apiGetCurrentUser, registerUser as apiRegisterUser, RegistrationData } from '../services/dataService';
+import { loginUser as apiLogin, logoutUser as apiLogout, getCurrentUser as apiGetCurrentUser, registerUser as apiRegisterUser, RegistrationData } from '../services/apiService';
 import { useNavigate } from 'react-router-dom';
 
+// Helper to set current user to localStorage
+const setCurrentUserToStorage = (user: User | null) => {
+  if (user) {
+    localStorage.setItem('community_current_user', JSON.stringify(user));
+  } else {
+    localStorage.removeItem('community_current_user');
+  }
+};
 
 interface AuthContextType {
   currentUser: User | null;
@@ -20,7 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
 
   useEffect(() => {
-    const user = apiGetCurrentUser();
+    const user = apiGetCurrentUser(); // This now correctly reads from localStorage if set by login
     if (user) {
       setCurrentUser(user);
     }
@@ -30,19 +38,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const login = useCallback(async (phone: string, password: string): Promise<boolean> => {
     setIsLoadingAuth(true);
     try {
-      const user = await apiLogin(phone, password);
+      const user = await apiLogin(phone, password); // apiLogin in apiService handles setAuthToken
       if (user) {
         setCurrentUser(user);
+        setCurrentUserToStorage(user); // Save user to localStorage
         setIsLoadingAuth(false);
         return true;
       } else {
         setCurrentUser(null);
+        setCurrentUserToStorage(null); // Clear user from localStorage
         setIsLoadingAuth(false);
         return false;
       }
     } catch (error) {
       console.error("Login failed:", error);
       setCurrentUser(null);
+      setCurrentUserToStorage(null); // Clear user from localStorage
       setIsLoadingAuth(false);
       return false;
     }
@@ -50,8 +61,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = useCallback(async () => {
     setIsLoadingAuth(true);
-    await apiLogout();
+    await apiLogout(); // apiLogout in apiService handles removeAuthToken
     setCurrentUser(null);
+    setCurrentUserToStorage(null); // Clear user from localStorage
     setIsLoadingAuth(false);
     navigate('/login'); 
   }, [navigate]);
@@ -59,11 +71,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = useCallback(async (data: RegistrationData): Promise<{success: boolean; message?: string; user?: User | null}> => {
     setIsLoadingAuth(true);
     try {
-      const result = await apiRegisterUser(data);
-      // Optionally auto-login after successful registration
+      const result = await apiRegisterUser(data); // apiRegisterUser in apiService handles setAuthToken
       if (result.success && result.user) {
-        // setCurrentUser(result.user); // Or call login if you want to re-verify and set CURRENT_USER_KEY
-        // For now, just return success, LoginPage/RegisterPage can navigate or prompt login
+        // After successful registration, we can choose to auto-login or prompt the user to login.
+        // For now, let's set the current user and store them, similar to login.
+        setCurrentUser(result.user);
+        setCurrentUserToStorage(result.user);
       }
       setIsLoadingAuth(false);
       return result;

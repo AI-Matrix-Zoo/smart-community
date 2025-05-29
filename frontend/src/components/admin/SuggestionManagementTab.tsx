@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
+import { getSuggestions, updateSuggestionStatus, addSuggestionProgress, adminDeleteSuggestion } from '../../services/apiService';
 import { Suggestion, SuggestionStatus } from '../../types';
-import { getSuggestions, updateSuggestionStatus, addSuggestionProgress, adminDeleteSuggestion } from '../../services/dataService';
 import { AuthContext } from '../../contexts/AuthContext';
 import { Button, LoadingSpinner, Badge, Modal, Select, Textarea } from '../UIElements';
 import { TrashIcon, ChatBubbleLeftEllipsisIcon, LightbulbIcon, ChevronDownIcon } from '../Icons';

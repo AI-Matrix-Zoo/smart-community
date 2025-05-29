@@ -6,7 +6,7 @@ import { Button, Input, Textarea, Select, Modal } from './UIElements';
 interface SuggestionFormProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (suggestion: Omit<Suggestion, 'id' | 'submittedDate' | 'status' | 'progressUpdates'>) => void;
+  onSubmit: (suggestion: { title: string; description: string; category: string }) => void;
   initialData?: Suggestion | null; 
 }
 
@@ -54,9 +54,7 @@ const SuggestionForm: React.FC<SuggestionFormProps> = ({ isOpen, onClose, onSubm
     onSubmit({ 
         title, 
         description, 
-        category, 
-        submittedBy,
-        submittedByUserId: auth?.currentUser?.id 
+        category
     });
     onClose(); 
   };

@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
+import { adminGetAllUsers, adminUpdateUser, adminDeleteUser } from '../../services/apiService';
 import { User, UserRole } from '../../types';
-import { adminGetAllUsers, adminUpdateUser, adminDeleteUser } from '../../services/dataService';
-import { AuthContext } from '../../contexts/AuthContext';
 import { Button, LoadingSpinner, Badge } from '../UIElements';
 import { PencilIcon, TrashIcon, UsersIcon } from '../Icons';
+import { AuthContext } from '../../contexts/AuthContext';
 import UserEditModal from './UserEditModal';
 
 const UserManagementTab: React.FC = () => {

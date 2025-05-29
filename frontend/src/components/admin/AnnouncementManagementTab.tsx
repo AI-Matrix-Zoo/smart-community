@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Announcement } from '../../types';
-import { getAnnouncements, addAnnouncement, updateAnnouncement, deleteAnnouncement } from '../../services/dataService';
+import { getAnnouncements, addAnnouncement, updateAnnouncement, deleteAnnouncement } from '../../services/apiService';
 import { Button, LoadingSpinner } from '../UIElements';
 import { PlusCircleIcon, PencilIcon, TrashIcon, MegaphoneIcon } from '../Icons';
 import AnnouncementForm from '../AnnouncementForm';

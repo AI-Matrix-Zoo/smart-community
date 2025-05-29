@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect, useCallback, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { LightbulbIcon, ShoppingBagIcon, PencilIcon, TrashIcon, PlusCircleIcon, MegaphoneIcon } from '../components/Icons';
 import { Button, LoadingSpinner } from '../components/UIElements';
 import { Announcement, UserRole } from '../types';
-import { getAnnouncements, addAnnouncement, updateAnnouncement, deleteAnnouncement } from '../services/dataService';
+import { getAnnouncements, addAnnouncement, updateAnnouncement, deleteAnnouncement } from '../services/apiService';
 import { AuthContext } from '../contexts/AuthContext';
 import AnnouncementForm from '../components/AnnouncementForm';
 

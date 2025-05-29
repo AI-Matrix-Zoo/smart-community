@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import { MarketItem } from '../types';
-import { getMarketItems, addMarketItem } from '../services/dataService';
+import { getMarketItems, addMarketItem } from '../services/apiService';
 import { Button, LoadingSpinner, Modal, Badge } from '../components/UIElements';
 import { PlusCircleIcon, ShoppingBagIcon, ArrowPathIcon } from '../components/Icons';
 import MarketItemForm from '../components/MarketItemForm';

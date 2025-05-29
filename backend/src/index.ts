@@ -19,12 +19,16 @@ import './config/database';
 dotenv.config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = Number(process.env.PORT) || 3000;
 
 // 中间件
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+  origin: [
+    'http://localhost:5173',
+    'http://192.168.1.7:5173',
+    /^http:\/\/192\.168\.1\.\d+:5173$/
+  ],
   credentials: true
 }));
 app.use(morgan('combined'));
@@ -81,9 +85,10 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 });
 
 // 启动服务器
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 智慧小区生活平台后端服务启动成功`);
-  console.log(`📍 服务地址: http://localhost:${PORT}`);
+  console.log(`📍 本地地址: http://localhost:${PORT}`);
+  console.log(`📍 局域网地址: http://192.168.1.7:${PORT}`);
   console.log(`🌍 环境: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 健康检查: http://localhost:${PORT}/health`);
 });

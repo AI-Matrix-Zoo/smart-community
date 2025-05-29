@@ -1,8 +1,7 @@
-
 import React, { useState, useContext } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../contexts/AuthContext';
-import { RegistrationData } from '../services/dataService';
+import { RegistrationData } from '../services/apiService';
 import { Button, Input, LoadingSpinner } from '../components/UIElements';
 import { BuildingOfficeIcon } from '../components/Icons';
 

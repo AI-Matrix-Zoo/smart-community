@@ -97,6 +97,50 @@ document.addEventListener('visibilitychange', handleVisibilityChange);
 - 优化了加载状态和错误处理的用户体验
 - 添加了刷新动画效果
 
+### 6. API地址配置问题 ✅
+
+**问题描述**: 
+- 前端代码中硬编码了 `localhost:3000` 作为API地址
+- 在生产环境中无法正常工作，导致API请求失败
+
+**解决方案**:
+- 实现了环境自适应的API地址配置
+- 开发环境自动使用 `http://localhost:3000/api`
+- 生产环境优先使用环境变量 `VITE_API_BASE_URL`，否则使用相对路径 `/api`
+- 创建了环境变量配置示例和类型定义
+
+**技术实现**:
+```typescript
+const getApiBaseUrl = (): string => {
+  // 开发环境
+  if (import.meta.env.DEV) {
+    return 'http://localhost:3000/api';
+  }
+  
+  // 生产环境：环境变量优先
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return import.meta.env.VITE_API_BASE_URL;
+  }
+  
+  // 生产环境：默认相对路径
+  return '/api';
+};
+```
+
+**部署配置**:
+```yaml
+# frontend/render.yaml
+envVars:
+  - key: VITE_API_BASE_URL
+    value: https://smart-community-backend.onrender.com/api
+```
+
+**测试验证**:
+- ✅ 开发环境：自动使用localhost:3000
+- ✅ 生产环境：使用配置的后端域名
+- ✅ 构建成功，无TypeScript错误
+- ✅ 支持环境变量覆盖
+
 ## 技术改进
 
 ### 1. 实时数据更新架构
