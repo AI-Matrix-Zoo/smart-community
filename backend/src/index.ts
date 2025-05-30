@@ -31,6 +31,7 @@ const corsOptions = {
     const allowedOrigins = [
       'http://localhost:5173',
       'http://192.168.1.7:5173',
+      'http://123.56.64.5',
       'https://smart-community-frontend.onrender.com',
       /^http:\/\/192\.168\.1\.\d+:5173$/,
       /^https:\/\/.*\.onrender\.com$/
