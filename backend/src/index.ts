@@ -23,14 +23,42 @@ const PORT = Number(process.env.PORT) || 3000;
 
 // 中间件
 app.use(helmet());
-app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://192.168.1.7:5173',
-    /^http:\/\/192\.168\.1\.\d+:5173$/
-  ],
+
+// CORS配置 - 支持开发和生产环境
+const corsOptions = {
+  origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
+    // 允许的域名列表
+    const allowedOrigins = [
+      'http://localhost:5173',
+      'http://192.168.1.7:5173',
+      'https://smart-community-frontend.onrender.com',
+      /^http:\/\/192\.168\.1\.\d+:5173$/,
+      /^https:\/\/.*\.onrender\.com$/
+    ];
+
+    // 如果没有origin（比如移动应用或Postman），允许访问
+    if (!origin) return callback(null, true);
+
+    // 检查origin是否在允许列表中
+    const isAllowed = allowedOrigins.some(allowedOrigin => {
+      if (typeof allowedOrigin === 'string') {
+        return allowedOrigin === origin;
+      } else {
+        return allowedOrigin.test(origin);
+      }
+    });
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      console.log('CORS blocked origin:', origin);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
-}));
+};
+
+app.use(cors(corsOptions));
 app.use(morgan('combined'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));

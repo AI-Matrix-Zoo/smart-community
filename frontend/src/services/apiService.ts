@@ -15,13 +15,13 @@ const getApiBaseUrl = (): string => {
     return 'http://localhost:3000/api';
   }
   
-  // 在生产环境中，优先使用环境变量，否则使用相对路径
+  // 在生产环境中，优先使用环境变量
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
   
-  // 生产环境默认使用相对路径（假设前后端部署在同一域名下）
-  return '/api';
+  // 生产环境默认使用Render后端域名
+  return 'https://smart-community-backend.onrender.com/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();
