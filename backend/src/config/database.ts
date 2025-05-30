@@ -118,7 +118,7 @@ function insertInitialData() {
         {
           id: 'user1',
           phone: '13800138000',
-          password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password123
+          password: '$2a$10$8Dj9C.RwL7dLorzT/p8Q3e5vH83KQbcOB7FN1sW9zZiRKSgr0NCyy', // password123
           name: '张三 (1栋-101)',
           role: UserRole.USER,
           building: '1栋',
@@ -127,7 +127,7 @@ function insertInitialData() {
         {
           id: 'user2',
           phone: '13900139000',
-          password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // password123
+          password: '$2a$10$8Dj9C.RwL7dLorzT/p8Q3e5vH83KQbcOB7FN1sW9zZiRKSgr0NCyy', // password123
           name: '李四 (2栋-202)',
           role: UserRole.USER,
           building: '2栋',
@@ -136,7 +136,7 @@ function insertInitialData() {
         {
           id: 'prop1',
           phone: 'property_phone_01',
-          password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // property123
+          password: '$2a$10$qoBKfGUObEwe1TWKJE3lJeKkHCsaJoO7ABQypvMNOfTTkYnCBL2ee', // property123
           name: '物业小王',
           role: UserRole.PROPERTY,
           building: null,
@@ -145,7 +145,7 @@ function insertInitialData() {
         {
           id: 'admin1',
           phone: 'admin_phone_01',
-          password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // admin123
+          password: '$2a$10$vUBY/liNoH6F.zZnYqp7kO06QKGX22O8kSORkKv13bkRS2sRce95.', // admin123
           name: '管理员小赵',
           role: UserRole.ADMIN,
           building: null,
@@ -154,7 +154,7 @@ function insertInitialData() {
         {
           id: 'admin2',
           phone: 'admin',
-          password: '$2a$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', // admin
+          password: '$2a$10$5Yge6MXqtSAHvFuhIDnwGOYk/vjD366QbUByjit/4yL2HDHsiojnm', // admin
           name: '超级管理员',
           role: UserRole.ADMIN,
           building: null,
