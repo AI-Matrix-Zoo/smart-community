@@ -1,1 +1,10 @@
-/*    /index.html   200 
+# SPA路由重定向规则
+# 静态资源直接访问
+/assets/*  /assets/:splat  200
+/favicon.ico  /favicon.ico  200
+
+# API请求不重定向（如果有的话）
+/api/*  /api/:splat  404
+
+# 所有其他路径重定向到index.html（SPA路由）
+/*  /index.html  200 

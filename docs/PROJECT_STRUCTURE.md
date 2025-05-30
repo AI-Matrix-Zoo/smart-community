@@ -51,8 +51,7 @@ frontend/
 ├── tsconfig.json               # TypeScript配置
 ├── vite.config.ts              # Vite构建配置
 ├── tailwind.config.js          # Tailwind CSS配置
-├── postcss.config.js           # PostCSS配置
-├── render-frontend.yaml        # Render前端部署配置
+├── render.yaml                 # Render前端部署配置
 ├── DEPLOYMENT.md               # 前端部署指南
 └── README.md                   # 前端项目说明
 ```
@@ -107,7 +106,7 @@ backend/
 | `tsconfig.json` | TypeScript配置 | TypeScript编译选项 |
 | `vite.config.ts` | 构建配置 | Vite构建工具配置 |
 | `tailwind.config.js` | 样式配置 | Tailwind CSS配置 |
-| `render-frontend.yaml` | 部署配置 | Render平台前端部署配置 |
+| `render.yaml` | 部署配置 | Render平台前端部署配置 |
 
 ### 后端配置文件
 
@@ -136,7 +135,7 @@ data/community.db
 ### Render平台部署
 
 - **后端部署**: `backend/render.yaml`
-- **前端部署**: `frontend/render-frontend.yaml`
+- **前端部署**: `frontend/render.yaml`
 
 ### Docker部署
 

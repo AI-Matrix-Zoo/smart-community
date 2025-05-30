@@ -24,7 +24,7 @@ npm run build
 
 1. **准备配置文件**
    
-   项目根目录的 `render-frontend.yaml` 已配置好：
+   项目根目录的 `frontend/render.yaml` 已配置好：
    ```yaml
    services:
      - type: static_site

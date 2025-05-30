@@ -151,7 +151,7 @@ VITE_API_BASE_URL=https://your-service-name.onrender.com/api
 ```
 
 ### 2. 前端部署配置
-使用提供的`render-frontend.yaml`配置：
+使用提供的`frontend/render.yaml`配置：
 ```yaml
 services:
   - type: static_site

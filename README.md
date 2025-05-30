@@ -228,7 +228,7 @@ backend/
    - 配置环境变量和持久化存储
 
 2. **前端部署**
-   - 使用 `render-frontend.yaml` 配置
+   - 使用 `frontend/render.yaml` 配置
    - 静态站点部署
    - 自动构建和发布
 

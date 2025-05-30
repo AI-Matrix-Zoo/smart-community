@@ -23,9 +23,4 @@ services:
       # 不缓存HTML文件
       - path: /index.html
         name: Cache-Control
-        value: no-cache, no-store, must-revalidate
-    # SPA路由重定向 - 所有路径都指向index.html
-    routes:
-      - type: rewrite
-        source: /*
-        destination: /index.html 
+        value: no-cache, no-store, must-revalidate 

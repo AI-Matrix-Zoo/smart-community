@@ -40,7 +40,6 @@
 
 ### `/temp` - 临时文件目录
 - `render.yaml` - Render部署配置（旧版）
-- `render-frontend.yaml` - 前端部署配置（旧版）
 - 其他临时文件和配置文件
 
 ### `/frontend` - 前端项目目录
