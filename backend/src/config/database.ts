@@ -3,11 +3,32 @@ import path from 'path';
 import fs from 'fs';
 import { UserRole, SuggestionStatus } from '../types';
 
-const dbPath = process.env.DB_PATH || './data/community.db';
+// 根据环境确定数据库路径
+const getDbPath = (): string => {
+  if (process.env.DB_PATH) {
+    return process.env.DB_PATH;
+  }
+  
+  // 在生产环境中使用绝对路径
+  if (process.env.NODE_ENV === 'production') {
+    const prodDbPath = path.join(process.cwd(), 'data', 'community.db');
+    console.log('Production database path:', prodDbPath);
+    return prodDbPath;
+  }
+  
+  // 开发环境使用相对路径
+  return './data/community.db';
+};
+
+const dbPath = getDbPath();
 const dbDir = path.dirname(dbPath);
+
+console.log('Database path:', dbPath);
+console.log('Database directory:', dbDir);
 
 // 确保数据目录存在
 if (!fs.existsSync(dbDir)) {
+  console.log('Creating database directory:', dbDir);
   fs.mkdirSync(dbDir, { recursive: true });
 }
 
@@ -15,12 +36,14 @@ export const db = new sqlite3.Database(dbPath, (err) => {
   if (err) {
     console.error('Error opening database:', err);
   } else {
-    console.log('Connected to SQLite database');
+    console.log('Connected to SQLite database at:', dbPath);
     initializeDatabase();
   }
 });
 
 function initializeDatabase() {
+  console.log('Initializing database tables...');
+  
   // 创建用户表
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
@@ -34,7 +57,13 @@ function initializeDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
-  `);
+  `, (err) => {
+    if (err) {
+      console.error('Error creating users table:', err);
+    } else {
+      console.log('Users table created/verified successfully');
+    }
+  });
 
   // 创建建议表
   db.run(`
@@ -51,7 +80,13 @@ function initializeDatabase() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (submitted_by_user_id) REFERENCES users(id)
     )
-  `);
+  `, (err) => {
+    if (err) {
+      console.error('Error creating suggestions table:', err);
+    } else {
+      console.log('Suggestions table created/verified successfully');
+    }
+  });
 
   // 创建建议进度更新表
   db.run(`
@@ -65,7 +100,13 @@ function initializeDatabase() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (suggestion_id) REFERENCES suggestions(id) ON DELETE CASCADE
     )
-  `);
+  `, (err) => {
+    if (err) {
+      console.error('Error creating suggestion_progress table:', err);
+    } else {
+      console.log('Suggestion_progress table created/verified successfully');
+    }
+  });
 
   // 创建二手市场表
   db.run(`
@@ -84,7 +125,13 @@ function initializeDatabase() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (seller_user_id) REFERENCES users(id)
     )
-  `);
+  `, (err) => {
+    if (err) {
+      console.error('Error creating market_items table:', err);
+    } else {
+      console.log('Market_items table created/verified successfully');
+    }
+  });
 
   // 创建公告表
   db.run(`
@@ -98,13 +145,23 @@ function initializeDatabase() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (author_id) REFERENCES users(id)
     )
-  `);
+  `, (err) => {
+    if (err) {
+      console.error('Error creating announcements table:', err);
+    } else {
+      console.log('Announcements table created/verified successfully');
+    }
+  });
 
-  // 插入初始数据
-  insertInitialData();
+  // 等待所有表创建完成后再插入初始数据
+  setTimeout(() => {
+    insertInitialData();
+  }, 1000);
 }
 
 function insertInitialData() {
+  console.log('Checking for existing user data...');
+  
   // 检查是否已有用户数据
   db.get('SELECT COUNT(*) as count FROM users', (err, row: any) => {
     if (err) {
@@ -112,7 +169,11 @@ function insertInitialData() {
       return;
     }
 
+    console.log('Current user count:', row.count);
+
     if (row.count === 0) {
+      console.log('No users found, inserting initial data...');
+      
       // 插入初始用户
       const initialUsers = [
         {
@@ -167,11 +228,30 @@ function insertInitialData() {
         VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
 
-      initialUsers.forEach(user => {
-        userStmt.run([user.id, user.phone, user.password, user.name, user.role, user.building, user.room]);
+      let insertedCount = 0;
+      initialUsers.forEach((user, index) => {
+        userStmt.run([user.id, user.phone, user.password, user.name, user.role, user.building, user.room], (err) => {
+          if (err) {
+            console.error(`Error inserting user ${user.phone}:`, err);
+          } else {
+            insertedCount++;
+            console.log(`Inserted user: ${user.phone} (${user.name})`);
+            
+            // 当所有用户都插入完成后
+            if (insertedCount === initialUsers.length) {
+              console.log('All initial users inserted successfully');
+            }
+          }
+        });
       });
 
-      userStmt.finalize();
+      userStmt.finalize((err) => {
+        if (err) {
+          console.error('Error finalizing user statement:', err);
+        } else {
+          console.log('User insertion completed');
+        }
+      });
 
       // 插入初始建议
       const initialSuggestions = [
