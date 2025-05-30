@@ -2,8 +2,16 @@ import { Suggestion, SuggestionStatus, MarketItem, User, Announcement } from '..
 
 // 根据环境自动切换API地址
 const getApiBaseUrl = (): string => {
-  // 在开发环境中使用localhost
+  // 在开发环境中，根据当前访问的主机名确定API地址
   if (import.meta.env.DEV) {
+    const currentHost = window.location.hostname;
+    
+    // 如果是通过IP地址访问，使用相同的IP地址访问后端
+    if (currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
+      return `http://${currentHost}:3000/api`;
+    }
+    
+    // 默认使用localhost
     return 'http://localhost:3000/api';
   }
   
