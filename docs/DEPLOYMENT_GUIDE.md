@@ -1,5 +1,161 @@
 # 智慧小区生活平台 - 部署指南
 
+## 环境要求
+
+- Node.js 18+
+- npm 或 yarn
+- PM2 (进程管理)
+- Nginx (反向代理)
+
+## 部署步骤
+
+### 1. 克隆代码
+
+```bash
+git clone https://github.com/AI-Matrix-Zoo/smart-community.git
+cd smart-community
+```
+
+### 2. 配置环境变量
+
+```bash
+# 复制环境变量模板
+cp backend/.env.example backend/.env
+
+# 编辑环境变量文件
+nano backend/.env
+```
+
+需要配置的关键变量：
+- `JWT_SECRET`: JWT密钥（必须修改）
+- `FRONTEND_URL`: 前端访问地址
+- `EMAIL_*`: 邮箱服务配置
+- `ALIBABA_CLOUD_*`: 阿里云短信服务（可选）
+
+### 3. 安装依赖
+
+```bash
+# 后端依赖
+cd backend
+npm install
+
+# 前端依赖
+cd ../frontend
+npm install
+```
+
+### 4. 构建前端
+
+```bash
+cd frontend
+npm run build
+```
+
+### 5. 启动后端服务
+
+```bash
+cd backend
+pm2 start ecosystem.config.js
+```
+
+### 6. 配置Nginx
+
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+
+    # 前端静态文件
+    location / {
+        root /path/to/smart-community/frontend/dist;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # API代理
+    location /api {
+        proxy_pass http://localhost:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+}
+```
+
+### 7. 重启服务
+
+```bash
+sudo systemctl reload nginx
+pm2 restart all
+```
+
+## 更新部署
+
+```bash
+# 拉取最新代码
+git pull origin main
+
+# 重新构建前端
+cd frontend
+npm run build
+
+# 复制到nginx目录（如果需要）
+sudo cp -r dist/* /usr/share/nginx/html/
+
+# 重启服务
+pm2 restart all
+sudo systemctl reload nginx
+```
+
+## 注意事项
+
+1. **安全性**：
+   - 修改默认的JWT密钥
+   - 配置防火墙规则
+   - 使用HTTPS（推荐）
+
+2. **数据备份**：
+   - 定期备份SQLite数据库文件
+   - 备份上传的图片文件
+
+3. **监控**：
+   - 使用PM2监控后端服务状态
+   - 配置日志轮转
+
+## 故障排除
+
+### 常见问题
+
+1. **前端页面空白**：
+   - 检查nginx配置
+   - 确认前端构建成功
+   - 查看浏览器控制台错误
+
+2. **API请求失败**：
+   - 检查后端服务状态：`pm2 status`
+   - 查看后端日志：`pm2 logs`
+   - 确认nginx代理配置
+
+3. **邮箱验证失败**：
+   - 检查邮箱服务配置
+   - 确认邮箱密码正确
+   - 查看后端日志
+
+### 日志查看
+
+```bash
+# 查看PM2日志
+pm2 logs
+
+# 查看Nginx日志
+sudo tail -f /var/log/nginx/access.log
+sudo tail -f /var/log/nginx/error.log
+```
+
 ## 概述
 
 本项目包含前端（React + TypeScript）和后端（Node.js + Express）两个部分，支持本地开发和生产环境部署。
@@ -136,53 +292,4 @@ cd frontend && npm run dev
 **症状**: 前端无法获取数据，控制台显示网络错误
 
 **解决方案**:
-- 检查 `VITE_API_BASE_URL` 环境变量是否正确设置
-- 确认后端服务正在运行且可访问
-- 检查CORS配置是否允许前端域名
-
-### 2. 认证问题
-
-**症状**: 登录后立即退出，或API返回401错误
-
-**解决方案**:
-- 检查JWT密钥配置
-- 确认认证令牌正确存储在localStorage
-- 验证API请求头是否包含Authorization字段
-
-### 3. 路由404错误
-
-**症状**: 刷新页面或直接访问路由时显示404
-
-**解决方案**:
-- 确认SPA重定向规则已正确配置
-- 检查 `frontend/public/_redirects` 文件
-- 验证服务器配置支持SPA路由
-
-### 4. 数据不同步
-
-**症状**: 用户操作后数据没有实时更新
-
-**解决方案**:
-- 确认前端使用的是 `apiService` 而不是 `dataService`
-- 检查后端API是否正确处理数据更新
-- 验证数据库连接和操作
-
-## 安全注意事项
-
-1. **环境变量**: 不要在代码中硬编码敏感信息
-2. **HTTPS**: 生产环境必须使用HTTPS
-3. **CORS**: 正确配置CORS策略，不要使用通配符
-4. **认证**: 使用强JWT密钥，设置合理的过期时间
-5. **输入验证**: 前后端都要进行数据验证
-
-## 监控和维护
-
-1. **日志监控**: 设置应用日志和错误监控
-2. **性能监控**: 监控API响应时间和前端加载速度
-3. **定期更新**: 及时更新依赖包和安全补丁
-4. **备份策略**: 定期备份数据库和重要配置
-
----
-
-**更新时间**: 2024年12月  
-**版本**: 1.0.0 
+- 检查 `
