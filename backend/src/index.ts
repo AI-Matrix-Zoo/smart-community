@@ -30,7 +30,7 @@ const corsOptions = {
     // 允许的域名列表
     const allowedOrigins = [
       'http://localhost:5173',
-      'http://192.168.1.7:5173',
+      'http://123.56.64.5:5173',
       'http://123.56.64.5',
       'https://smart-community-frontend.onrender.com',
       /^http:\/\/192\.168\.1\.\d+:5173$/,
@@ -61,8 +61,8 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.use(morgan('combined'));
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
 // 静态文件服务（用于上传的图片等）
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
@@ -117,7 +117,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 智慧小区生活平台后端服务启动成功`);
   console.log(`📍 本地地址: http://localhost:${PORT}`);
-  console.log(`📍 局域网地址: http://192.168.1.7:${PORT}`);
+  console.log(`📍 公网地址: http://123.56.64.5:${PORT}`);
   console.log(`🌍 环境: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📊 健康检查: http://localhost:${PORT}/health`);
 });

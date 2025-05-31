@@ -1,7 +1,7 @@
 module.exports = {
   apps: [{
     name: 'smart-community-backend',
-    script: 'dist/index.js',
+    script: './start-with-env.sh',
     instances: 1,
     autorestart: true,
     watch: false,

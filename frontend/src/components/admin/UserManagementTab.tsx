@@ -37,7 +37,7 @@ const UserManagementTab: React.FC = () => {
     setIsEditModalOpen(true);
   };
 
-  const handleSaveUser = async (userId: string, userData: Partial<Pick<User, 'name' | 'phone' | 'role' | 'building' | 'room'>>) => {
+  const handleSaveUser = async (userId: string, userData: Partial<Pick<User, 'name' | 'email' | 'role' | 'building' | 'unit' | 'room'>>) => {
     try {
       const updatedUser = await adminUpdateUser(userId, userData);
       if (updatedUser) {
@@ -104,7 +104,7 @@ const UserManagementTab: React.FC = () => {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">姓名</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">手机号</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">邮箱</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">角色</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">楼栋/房号</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
@@ -115,12 +115,12 @@ const UserManagementTab: React.FC = () => {
               <tr key={user.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 truncate max-w-xs">{user.id}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{user.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{user.phone}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{user.email}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <Badge color={getRoleBadgeColor(user.role)}>{user.role}</Badge>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                  {user.building && user.room ? `${user.building}-${user.room}` : 'N/A'}
+                  {user.building && user.unit && user.room ? `${user.building}-${user.unit}-${user.room}` : 'N/A'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                   <Button variant="ghost" size="sm" onClick={() => handleEditUser(user)} aria-label="编辑用户">

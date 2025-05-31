@@ -82,36 +82,40 @@ const apiRequest = async <T>(
 };
 
 // --- 认证API ---
-export const loginUser = async (phone: string, password: string): Promise<User | null> => {
+export const loginUser = async (identifier: string, password: string): Promise<{ success: boolean; message?: string; user?: User }> => {
   try {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ phone, password }),
+      body: JSON.stringify({ identifier, password }),
     });
 
     const data: ApiResponse<{ user: User; token: string }> = await response.json();
     
     if (data.success && data.data) {
       setAuthToken(data.data.token);
-      return data.data.user;
+      return { success: true, user: data.data.user };
     }
     
-    return null;
+    return { success: false, message: data.message || '登录失败' };
   } catch (error) {
     console.error('登录失败:', error);
-    return null;
+    return { success: false, message: '登录失败，请检查网络连接' };
   }
 };
 
 export interface RegistrationData {
-  phone: string;
+  phone?: string;
+  email?: string;
   password: string;
   name: string;
   building: string;
+  unit: string;
   room: string;
+  verificationCode: string;
+  verificationType: 'phone' | 'email';
 }
 
 export const registerUser = async (data: RegistrationData): Promise<{ success: boolean; message?: string; user?: User }> => {

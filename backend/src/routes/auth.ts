@@ -3,15 +3,69 @@ import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import Joi from 'joi';
 import { db } from '../config/database';
-import { LoginRequest, RegisterRequest, ApiResponse, User, UserRole } from '../types';
+import { LoginRequest, RegisterRequest, ApiResponse, User, UserRole, SendVerificationCodeRequest, VerifyCodeRequest } from '../types';
+import { emailService } from '../services/emailService';
 
 const router = express.Router();
 
+// 验证码缓存
+class VerificationCodeCache {
+  private static cache = new Map<string, { code: string; expiry: number }>();
+
+  static set(identifier: string, code: string, ttlMinutes: number = 5): void {
+    const expiry = Date.now() + ttlMinutes * 60 * 1000;
+    this.cache.set(identifier, { code, expiry });
+    console.log(`🔐 验证码已设置: ${identifier} -> ${code}, 过期时间: ${new Date(expiry).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}`);
+  }
+
+  static get(identifier: string): string | null {
+    const entry = this.cache.get(identifier);
+    if (!entry) return null;
+    
+    if (Date.now() > entry.expiry) {
+      this.cache.delete(identifier);
+      return null;
+    }
+    
+    return entry.code;
+  }
+
+  static verify(identifier: string, code: string): boolean {
+    const storedCode = this.get(identifier);
+    console.log(`🔍 验证码验证: ${identifier}, 输入: ${code}, 存储: ${storedCode}`);
+    if (!storedCode) return false;
+    
+    const isValid = storedCode === code;
+    if (isValid) {
+      this.cache.delete(identifier); // 验证成功后删除验证码
+      console.log(`✅ 验证码验证成功: ${identifier}`);
+    } else {
+      console.log(`❌ 验证码验证失败: ${identifier}`);
+    }
+    
+    return isValid;
+  }
+
+  static delete(identifier: string): void {
+    this.cache.delete(identifier);
+  }
+}
+
+// 生成6位数字验证码
+function generateVerificationCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// 验证是否为邮箱
+function isEmail(str: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str);
+}
+
 // 验证schemas
 const loginSchema = Joi.object({
-  phone: Joi.string().required().messages({
-    'string.empty': '手机号不能为空',
-    'any.required': '手机号是必填项'
+  identifier: Joi.string().required().messages({
+    'string.empty': '邮箱不能为空',
+    'any.required': '邮箱是必填项'
   }),
   password: Joi.string().required().messages({
     'string.empty': '密码不能为空',
@@ -19,10 +73,22 @@ const loginSchema = Joi.object({
   })
 });
 
+const sendCodeSchema = Joi.object({
+  identifier: Joi.string().email().required().messages({
+    'string.email': '请输入有效的邮箱地址',
+    'string.empty': '邮箱不能为空',
+    'any.required': '邮箱是必填项'
+  }),
+  type: Joi.string().valid('email').required().messages({
+    'any.only': '验证类型必须是email',
+    'any.required': '验证类型是必填项'
+  })
+});
+
 const registerSchema = Joi.object({
-  phone: Joi.string().pattern(/^1[3-9]\d{9}$/).required().messages({
-    'string.pattern.base': '请输入有效的手机号',
-    'any.required': '手机号是必填项'
+  email: Joi.string().email().required().messages({
+    'string.email': '请输入有效的邮箱地址',
+    'any.required': '邮箱是必填项'
   }),
   password: Joi.string().min(6).required().messages({
     'string.min': '密码至少6位',
@@ -36,10 +102,139 @@ const registerSchema = Joi.object({
     'string.empty': '楼栋不能为空',
     'any.required': '楼栋是必填项'
   }),
+  unit: Joi.string().required().messages({
+    'string.empty': '单元号不能为空',
+    'any.required': '单元号是必填项'
+  }),
   room: Joi.string().required().messages({
     'string.empty': '房间号不能为空',
     'any.required': '房间号是必填项'
+  }),
+  verificationCode: Joi.string().length(6).required().messages({
+    'string.length': '验证码必须是6位数字',
+    'any.required': '验证码是必填项'
+  }),
+  verificationType: Joi.string().valid('email').required().messages({
+    'any.only': '验证类型必须是email',
+    'any.required': '验证类型是必填项'
   })
+});
+
+// 发送验证码
+router.post('/send-verification-code', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { error } = sendCodeSchema.validate(req.body);
+    if (error) {
+      res.status(400).json({
+        success: false,
+        message: error.details[0].message
+      });
+      return;
+    }
+
+    const { identifier, type }: SendVerificationCodeRequest = req.body;
+
+    // 验证邮箱格式
+    if (!isEmail(identifier)) {
+      res.status(400).json({
+        success: false,
+        message: '请输入有效的邮箱地址'
+      });
+      return;
+    }
+
+    // 检查是否已注册
+    db.get(
+      `SELECT id FROM users WHERE email = ?`,
+      [identifier],
+      async (err: any, existingUser: any): Promise<void> => {
+        if (err) {
+          res.status(500).json({
+            success: false,
+            message: '服务器错误'
+          });
+          return;
+        }
+
+        if (existingUser) {
+          res.status(400).json({
+            success: false,
+            message: '该邮箱已被注册'
+          });
+          return;
+        }
+
+        // 生成验证码
+        const code = generateVerificationCode();
+        VerificationCodeCache.set(identifier, code);
+
+        try {
+          // 发送邮箱验证码
+          const emailSent = await emailService.sendVerificationCode(identifier, code);
+          
+          if (emailSent) {
+            res.json({
+              success: true,
+              message: '验证码已发送到您的邮箱',
+              data: process.env.NODE_ENV === 'development' ? { code } : undefined
+            });
+          } else {
+            res.status(500).json({
+              success: false,
+              message: '邮件发送失败，请稍后重试'
+            });
+          }
+        } catch (error) {
+          console.error('发送邮件验证码失败:', error);
+          res.status(500).json({
+            success: false,
+            message: '邮件发送失败，请稍后重试'
+          });
+        }
+      }
+    );
+  } catch (error) {
+    console.error('发送验证码错误:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误'
+    });
+  }
+});
+
+// 验证验证码
+router.post('/verify-code', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { identifier, code, type }: VerifyCodeRequest = req.body;
+
+    if (!identifier || !code || !type) {
+      res.status(400).json({
+        success: false,
+        message: '标识符、验证码和类型不能为空'
+      });
+      return;
+    }
+
+    const isValid = VerificationCodeCache.verify(identifier, code);
+    
+    if (isValid) {
+      res.json({
+        success: true,
+        message: '验证码验证成功'
+      });
+    } else {
+      res.status(400).json({
+        success: false,
+        message: '验证码错误或已过期'
+      });
+    }
+  } catch (error) {
+    console.error('Verify code error:', error);
+    res.status(500).json({
+      success: false,
+      message: '服务器错误'
+    });
+  }
 });
 
 // 登录
@@ -54,12 +249,21 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { phone, password }: LoginRequest = req.body;
+    const { identifier, password }: LoginRequest = req.body;
+
+    // 验证邮箱格式
+    if (!isEmail(identifier)) {
+      res.status(400).json({
+        success: false,
+        message: '请输入有效的邮箱地址'
+      });
+      return;
+    }
 
     // 查找用户
     db.get(
-      'SELECT * FROM users WHERE phone = ?',
-      [phone],
+      `SELECT * FROM users WHERE email = ?`,
+      [identifier],
       async (err: any, user: any): Promise<void> => {
         if (err) {
           res.status(500).json({
@@ -72,7 +276,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
         if (!user) {
           res.status(401).json({
             success: false,
-            message: '手机号或密码错误'
+            message: '账号或密码错误'
           });
           return;
         }
@@ -82,7 +286,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
         if (!isValidPassword) {
           res.status(401).json({
             success: false,
-            message: '手机号或密码错误'
+            message: '账号或密码错误'
           });
           return;
         }
@@ -91,7 +295,7 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
         const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key';
         const payload = {
           userId: user.id,
-          phone: user.phone,
+          email: user.email,
           role: user.role,
           name: user.name
         };
@@ -129,12 +333,22 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
       return;
     }
 
-    const { phone, password, name, building, room }: RegisterRequest = req.body;
+    const { email, password, name, building, unit, room, verificationCode, verificationType }: RegisterRequest = req.body;
 
-    // 检查手机号是否已存在
+    // 验证验证码
+    const isCodeValid = VerificationCodeCache.verify(email, verificationCode);
+    if (!isCodeValid) {
+      res.status(400).json({
+        success: false,
+        message: '验证码错误或已过期'
+      });
+      return;
+    }
+
+    // 检查是否已存在
     db.get(
-      'SELECT id FROM users WHERE phone = ?',
-      [phone],
+      `SELECT id FROM users WHERE email = ?`,
+      [email],
       async (err: any, existingUser: any): Promise<void> => {
         if (err) {
           res.status(500).json({
@@ -147,7 +361,7 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
         if (existingUser) {
           res.status(400).json({
             success: false,
-            message: '该手机号已被注册'
+            message: '该邮箱已被注册'
           });
           return;
         }
@@ -157,14 +371,14 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
 
         // 创建新用户
         const userId = `user${Date.now()}`;
-        const displayName = `${name} (${building}-${room})`;
+        const displayName = `${name} (${building}-${unit}-${room})`;
 
         db.run(
-          `INSERT INTO users (id, phone, password, name, role, building, room)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`,
-          [userId, phone, hashedPassword, displayName, UserRole.USER, building, room],
+          `INSERT INTO users (id, email, password, name, role, building, unit, room) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [userId, email, hashedPassword, displayName, UserRole.USER, building, unit, room],
           function(err: any): void {
             if (err) {
+              console.error('Register error:', err);
               res.status(500).json({
                 success: false,
                 message: '注册失败'
@@ -176,7 +390,7 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
             const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key';
             const payload = {
               userId,
-              phone,
+              email,
               role: UserRole.USER,
               name: displayName
             };
@@ -184,10 +398,11 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
 
             const newUser = {
               id: userId,
-              phone,
+              email,
               name: displayName,
               role: UserRole.USER,
               building,
+              unit,
               room
             };
 
@@ -204,6 +419,7 @@ router.post('/register', async (req: Request, res: Response): Promise<void> => {
       }
     );
   } catch (error) {
+    console.error('Register error:', error);
     res.status(500).json({
       success: false,
       message: '服务器错误'

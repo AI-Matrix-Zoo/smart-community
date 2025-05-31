@@ -24,8 +24,10 @@ const marketItemSchema = Joi.object({
     'string.empty': '分类不能为空',
     'any.required': '分类是必填项'
   }),
-  imageUrl: Joi.string().uri().optional(),
-  contactInfo: Joi.string().optional()
+  imageUrl: Joi.string().optional().allow(''),
+  contactInfo: Joi.string().optional().allow(''),
+  seller: Joi.string().optional(),
+  sellerUserId: Joi.string().optional()
 });
 
 // 获取所有市场物品

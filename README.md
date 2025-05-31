@@ -15,9 +15,11 @@
 ## ✨ 功能特性
 
 ### 🔐 用户认证系统
-- 手机号注册/登录
-- JWT token认证
-- 多角色权限管理（用户/物业/管理员）
+- **邮箱验证注册**: 支持邮箱验证码注册
+- **邮箱登录**: 支持邮箱登录
+- **JWT token认证**: 安全的身份验证
+- **多角色权限管理**: 用户/物业/管理员三级权限
+- **单元号管理**: 详细的住址信息（楼栋+单元号+房间号）
 
 ### 💡 建议反馈系统
 - 居民提交建议
@@ -38,6 +40,27 @@
 - 用户信息管理
 - 角色权限分配
 - 用户数据统计
+
+## 🎭 演示账户
+
+系统预置了以下演示账户供测试使用：
+
+### 👤 业主账户
+- **邮箱**: `resident@example.com`
+- **密码**: `password123`
+- **权限**: 基础用户权限，可以提交建议、使用二手市场等
+
+### 🏢 物业账户
+- **邮箱**: `property@example.com`
+- **密码**: `property123`
+- **权限**: 物业管理权限，可以处理建议、发布公告等
+
+### 👑 管理员账户
+- **邮箱**: `admin@example.com`
+- **密码**: `admin123`
+- **权限**: 最高管理权限，可以管理用户、系统配置等
+
+> **注意**: 这些是演示账户，仅用于功能测试。生产环境中请及时修改或删除这些默认账户。
 
 ## 🚀 快速开始
 
@@ -81,6 +104,38 @@
 3. **访问应用**
    - 前端: http://localhost:5173
    - 后端API: http://localhost:3001
+
+## 📧 邮箱验证配置
+
+系统支持真实邮箱验证码发送功能：
+
+### 配置邮箱服务
+1. **QQ邮箱配置**（推荐）
+   ```bash
+   EMAIL_HOST=smtp.qq.com
+   EMAIL_PORT=587
+   EMAIL_SECURE=false
+   EMAIL_USER=your-email@qq.com
+   EMAIL_PASS=your-16-digit-auth-code
+   EMAIL_FROM=your-email@qq.com
+   EMAIL_ENABLED=true
+   ```
+
+2. **获取QQ邮箱授权码**
+   - 登录QQ邮箱 → 设置 → 账户
+   - 开启"IMAP/SMTP服务"
+   - 发送短信获取16位授权码
+
+3. **其他邮箱服务商**
+   - Gmail: smtp.gmail.com:587
+   - 163邮箱: smtp.163.com:587
+   - 详细配置请参考: [邮箱配置指南](docs/EMAIL_SETUP_GUIDE.md)
+
+### 邮件特性
+- 🎨 美观的HTML邮件模板
+- 🔐 6位数字验证码
+- ⏰ 5分钟有效期
+- 📱 响应式设计，支持手机查看
 
 ## 🚀 部署指南
 
@@ -145,6 +200,15 @@ NODE_ENV=production
 PORT=3000
 JWT_SECRET=your-super-secret-jwt-key
 FRONTEND_URL=https://your-frontend-domain.com
+
+# 邮箱服务配置
+EMAIL_HOST=smtp.qq.com
+EMAIL_PORT=587
+EMAIL_SECURE=false
+EMAIL_USER=your-email@qq.com
+EMAIL_PASS=your-auth-code
+EMAIL_FROM=your-email@qq.com
+EMAIL_ENABLED=true
 ```
 
 #### 前端环境变量
@@ -172,6 +236,7 @@ VITE_NODE_ENV=production
 - **JWT** - 身份认证
 - **bcryptjs** - 密码加密
 - **Joi** - 数据验证
+- **Nodemailer** - 邮件发送服务
 
 ## 📁 项目结构
 
@@ -182,6 +247,7 @@ frontend/
 │   ├── components/     # 可复用组件
 │   ├── contexts/       # React Context
 │   ├── services/       # API服务
+│   ├── pages/          # 页面组件
 │   └── types.ts        # TypeScript类型定义
 ├── package.json
 └── vite.config.ts
@@ -192,11 +258,13 @@ frontend/
 backend/
 ├── src/
 │   ├── routes/         # API路由
+│   ├── services/       # 业务服务（邮箱、短信等）
 │   ├── middleware/     # 中间件
 │   ├── config/         # 配置文件
 │   └── types/          # 类型定义
 ├── data/               # SQLite数据库
-├── manage.sh           # 后端管理脚本
+├── logs/               # 日志文件
+├── start-with-env.sh   # 环境变量启动脚本
 └── package.json
 ```
 
@@ -258,6 +326,10 @@ docker-compose up -d
 
 # 或手动测试
 cd backend && node test-api.js
+
+# 邮箱功能测试
+./test-email-registration.sh
+./test-real-email.sh your-email@example.com
 ```
 
 ### 前端测试
@@ -268,19 +340,37 @@ cd frontend && npm test
 ## 📊 数据库设计
 
 ### 主要数据表
-- **users** - 用户信息
+- **users** - 用户信息（邮箱注册）
 - **suggestions** - 建议反馈
 - **suggestion_progress** - 建议处理进度
 - **market_items** - 二手市场物品
 - **announcements** - 公告信息
 
+### 用户表结构
+```sql
+CREATE TABLE users (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE,           -- 邮箱（必填）
+  password TEXT NOT NULL,
+  name TEXT NOT NULL,
+  role TEXT NOT NULL,
+  building TEXT,               -- 楼栋
+  unit TEXT,                   -- 单元号
+  room TEXT,                   -- 房间号
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+```
+
 ## 🔐 安全特性
 
-- JWT token认证
-- 密码bcrypt加密
-- 角色权限控制
-- 输入数据验证
-- CORS跨域保护
+- **JWT token认证**: 7天有效期
+- **密码bcrypt加密**: 10轮加密
+- **角色权限控制**: 三级权限管理
+- **输入数据验证**: Joi验证库
+- **CORS跨域保护**: 配置允许的域名
+- **验证码安全**: 5分钟有效期，防暴力破解
+- **邮箱验证**: 防止恶意注册
 
 ## 🎯 开发规范
 
@@ -307,6 +397,13 @@ cd frontend && npm test
 
 ## 📝 更新日志
 
+### v2.0.0 (2025-05-31)
+- ✨ 新增邮箱验证注册功能
+- ✨ 支持单元号字段
+- ✨ 美观的HTML邮件模板
+- 🔧 优化用户认证系统
+- 📚 完善文档和配置指南
+
 ### v1.0.0 (2024-01-01)
 - 初始版本发布
 - 完整的前后端功能
@@ -318,6 +415,8 @@ cd frontend && npm test
 - 后端文档: [backend/README.md](./backend/README.md)
 - 前端文档: [frontend/README.md](./frontend/README.md)
 - 部署指南: [DEPLOYMENT.md](./backend/DEPLOYMENT.md)
+- 邮箱配置: [docs/EMAIL_SETUP_GUIDE.md](docs/EMAIL_SETUP_GUIDE.md)
+- 用户指南: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
 
 ## 📄 许可证
 
@@ -338,6 +437,11 @@ cd 智慧小区生活平台
 
 # 访问应用
 open http://localhost:5173
+
+# 使用演示账户登录测试
+# 业主: resident@example.com / password123
+# 物业: property@example.com / property123  
+# 管理员: admin@example.com / admin123
 ```
 
 祝您使用愉快！ 🏠✨

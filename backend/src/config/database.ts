@@ -48,20 +48,40 @@ function initializeDatabase() {
   db.run(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
-      phone TEXT UNIQUE NOT NULL,
+      phone TEXT,
+      email TEXT,
       password TEXT NOT NULL,
       name TEXT NOT NULL,
       role TEXT NOT NULL,
       building TEXT,
+      unit TEXT,
       room TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(phone),
+      UNIQUE(email)
     )
   `, (err) => {
     if (err) {
       console.error('Error creating users table:', err);
     } else {
       console.log('Users table created/verified successfully');
+      // 检查是否需要添加email字段
+      db.run(`ALTER TABLE users ADD COLUMN email TEXT`, (alterErr) => {
+        if (alterErr && !alterErr.message.includes('duplicate column name')) {
+          console.error('Error adding email column:', alterErr);
+        } else if (!alterErr) {
+          console.log('Email column added successfully');
+        }
+      });
+      // 检查是否需要添加unit字段
+      db.run(`ALTER TABLE users ADD COLUMN unit TEXT`, (alterErr) => {
+        if (alterErr && !alterErr.message.includes('duplicate column name')) {
+          console.error('Error adding unit column:', alterErr);
+        } else if (!alterErr) {
+          console.log('Unit column added successfully');
+        }
+      });
     }
   });
 
@@ -178,64 +198,69 @@ function insertInitialData() {
       const initialUsers = [
         {
           id: 'user1',
-          phone: '13800138000',
+          email: 'resident@example.com',
           password: '$2a$10$8Dj9C.RwL7dLorzT/p8Q3e5vH83KQbcOB7FN1sW9zZiRKSgr0NCyy', // password123
-          name: '张三 (1栋-101)',
+          name: '张三 (1栋-1单元-101)',
           role: UserRole.USER,
           building: '1栋',
+          unit: '1单元',
           room: '101'
         },
         {
           id: 'user2',
-          phone: '13900139000',
+          email: 'user2@example.com',
           password: '$2a$10$8Dj9C.RwL7dLorzT/p8Q3e5vH83KQbcOB7FN1sW9zZiRKSgr0NCyy', // password123
-          name: '李四 (2栋-202)',
+          name: '李四 (2栋-2单元-202)',
           role: UserRole.USER,
           building: '2栋',
+          unit: '2单元',
           room: '202'
         },
         {
           id: 'prop1',
-          phone: 'property_phone_01',
+          email: 'property@example.com',
           password: '$2a$10$qoBKfGUObEwe1TWKJE3lJeKkHCsaJoO7ABQypvMNOfTTkYnCBL2ee', // property123
           name: '物业小王',
           role: UserRole.PROPERTY,
           building: null,
+          unit: null,
           room: null
         },
         {
           id: 'admin1',
-          phone: 'admin_phone_01',
+          email: 'admin@example.com',
           password: '$2a$10$vUBY/liNoH6F.zZnYqp7kO06QKGX22O8kSORkKv13bkRS2sRce95.', // admin123
           name: '管理员小赵',
           role: UserRole.ADMIN,
           building: null,
+          unit: null,
           room: null
         },
         {
           id: 'admin2',
-          phone: 'admin',
+          email: 'superadmin@example.com',
           password: '$2a$10$5Yge6MXqtSAHvFuhIDnwGOYk/vjD366QbUByjit/4yL2HDHsiojnm', // admin
           name: '超级管理员',
           role: UserRole.ADMIN,
           building: null,
+          unit: null,
           room: null
         }
       ];
 
       const userStmt = db.prepare(`
-        INSERT INTO users (id, phone, password, name, role, building, room)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO users (id, email, password, name, role, building, unit, room)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       let insertedCount = 0;
       initialUsers.forEach((user, index) => {
-        userStmt.run([user.id, user.phone, user.password, user.name, user.role, user.building, user.room], (err) => {
+        userStmt.run([user.id, user.email, user.password, user.name, user.role, user.building, user.unit, user.room], (err) => {
           if (err) {
-            console.error(`Error inserting user ${user.phone}:`, err);
+            console.error(`Error inserting user ${user.email}:`, err);
           } else {
             insertedCount++;
-            console.log(`Inserted user: ${user.phone} (${user.name})`);
+            console.log(`Inserted user: ${user.email} (${user.name})`);
             
             // 当所有用户都插入完成后
             if (insertedCount === initialUsers.length) {

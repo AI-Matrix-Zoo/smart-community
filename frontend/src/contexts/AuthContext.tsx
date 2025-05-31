@@ -12,10 +12,15 @@ const setCurrentUserToStorage = (user: User | null) => {
   }
 };
 
+interface LoginRequest {
+  identifier: string;
+  password: string;
+}
+
 interface AuthContextType {
   currentUser: User | null;
   isLoadingAuth: boolean;
-  login: (phone: string, password: string) => Promise<boolean>; // Changed username to phone
+  login: (loginData: LoginRequest) => Promise<{success: boolean; message?: string; user?: User | null}>;
   logout: () => Promise<void>;
   register: (data: RegistrationData) => Promise<{success: boolean; message?: string; user?: User | null}>;
 }
@@ -35,27 +40,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoadingAuth(false);
   }, []);
 
-  const login = useCallback(async (phone: string, password: string): Promise<boolean> => {
+  const login = useCallback(async (loginData: LoginRequest): Promise<{success: boolean; message?: string; user?: User | null}> => {
     setIsLoadingAuth(true);
     try {
-      const user = await apiLogin(phone, password); // apiLogin in apiService handles setAuthToken
-      if (user) {
-        setCurrentUser(user);
-        setCurrentUserToStorage(user); // Save user to localStorage
+      const result = await apiLogin(loginData.identifier, loginData.password); // apiLogin in apiService handles setAuthToken
+      if (result.success && result.user) {
+        setCurrentUser(result.user);
+        setCurrentUserToStorage(result.user); // Save user to localStorage
         setIsLoadingAuth(false);
-        return true;
+        return { success: true, user: result.user };
       } else {
         setCurrentUser(null);
         setCurrentUserToStorage(null); // Clear user from localStorage
         setIsLoadingAuth(false);
-        return false;
+        return { success: false, message: result.message || '登录失败' };
       }
     } catch (error) {
       console.error("Login failed:", error);
       setCurrentUser(null);
       setCurrentUserToStorage(null); // Clear user from localStorage
       setIsLoadingAuth(false);
-      return false;
+      return { success: false, message: '登录过程中发生错误' };
     }
   }, []);
 
@@ -87,7 +92,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return { success: false, message: errorMessage };
     }
   }, []);
-
 
   return (
     <AuthContext.Provider value={{ currentUser, isLoadingAuth, login, logout, register }}>

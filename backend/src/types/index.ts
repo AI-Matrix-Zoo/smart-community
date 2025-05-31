@@ -47,12 +47,15 @@ export enum UserRole {
 
 export interface User {
   id: string;
-  phone: string;
-  password?: string;
+  phone?: string;
+  email?: string;
   name: string;
   role: UserRole;
   building?: string;
+  unit?: string;
   room?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Announcement {
@@ -67,16 +70,30 @@ export interface Announcement {
 
 // API相关类型
 export interface LoginRequest {
-  phone: string;
+  identifier: string; // 可以是手机号或邮箱
   password: string;
 }
 
 export interface RegisterRequest {
-  phone: string;
+  email: string;
   password: string;
   name: string;
   building: string;
+  unit: string;
   room: string;
+  verificationCode: string;
+  verificationType: 'email';
+}
+
+export interface SendVerificationCodeRequest {
+  identifier: string; // 邮箱
+  type: 'email';
+}
+
+export interface VerifyCodeRequest {
+  identifier: string;
+  code: string;
+  type: 'email';
 }
 
 export interface ApiResponse<T = any> {

@@ -1,4 +1,3 @@
-
 export enum SuggestionStatus {
   Submitted = '已提交',
   InProgress = '处理中',
@@ -53,13 +52,25 @@ export enum UserRole {
 
 export interface User {
   id: string;
-  phone: string; // Changed from username
+  phone?: string;
+  email?: string;
   password?: string; // Only for mock auth, don't store real passwords like this
   name: string; // Display name, e.g., "张三 (1栋-101)" or "物业李四"
   role: UserRole;
   building?: string; // e.g., "1栋"
+  unit?: string; // e.g., "1单元"
   room?: string; // e.g., "101"
-  // unit is removed as per current structure, can be added back if needed
+}
+
+export interface RegistrationData {
+  email: string;
+  password: string;
+  name: string;
+  building: string;
+  unit: string;
+  room: string;
+  verificationCode: string;
+  verificationType: 'email';
 }
 
 export interface Announcement {
