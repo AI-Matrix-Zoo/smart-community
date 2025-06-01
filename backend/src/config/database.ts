@@ -128,6 +128,33 @@ function initializeDatabase() {
     }
   });
 
+  // 创建建议评论表
+  db.run(`
+    CREATE TABLE IF NOT EXISTS suggestion_comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      suggestion_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      user_name TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (suggestion_id) REFERENCES suggestions (id),
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    )
+  `);
+
+  // 创建建议点赞表
+  db.run(`
+    CREATE TABLE IF NOT EXISTS suggestion_likes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      suggestion_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(suggestion_id, user_id),
+      FOREIGN KEY (suggestion_id) REFERENCES suggestions (id),
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    )
+  `);
+
   // 创建二手市场表
   db.run(`
     CREATE TABLE IF NOT EXISTS market_items (
@@ -229,7 +256,7 @@ function insertInitialData() {
         {
           id: 'admin1',
           email: 'admin@example.com',
-          password: '$2a$10$vUBY/liNoH6F.zZnYqp7kO06QKGX22O8kSORkKv13bkRS2sRce95.', // admin123
+          password: '$2a$10$A4mJJbFBiOZ6fVKmrSP5w.a99z254lCVjA1mc6fajcftUkFBjsPp.', // adminzxw
           name: '管理员小赵',
           role: UserRole.ADMIN,
           building: null,

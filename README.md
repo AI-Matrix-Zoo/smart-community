@@ -1,447 +1,267 @@
-# 智慧小区生活平台
+# 智慧moma生活平台
 
-一个现代化的智慧小区生活服务平台，提供建议反馈、二手市场、公告管理等功能。采用前后端分离架构，支持多角色权限管理。
+一个现代化的智慧社区生活服务平台，提供业主服务、物业管理、社区互动等功能。
 
 ## 🏗️ 项目架构
 
 ```
-智慧小区生活平台/
+智慧moma生活平台/
 ├── frontend/          # 前端项目 (React + TypeScript + Vite)
 ├── backend/           # 后端项目 (Node.js + TypeScript + Express)
 ├── manage.sh          # 全栈项目管理脚本
 └── README.md          # 项目说明文档
 ```
 
-## ✨ 功能特性
+## ✨ 功能特色
 
-### 🔐 用户认证系统
-- **邮箱验证注册**: 支持邮箱验证码注册
-- **邮箱登录**: 支持邮箱登录
-- **JWT token认证**: 安全的身份验证
-- **多角色权限管理**: 用户/物业/管理员三级权限
-- **单元号管理**: 详细的住址信息（楼栋+单元号+房间号）
-
-### 💡 建议反馈系统
-- 居民提交建议
-- 物业/管理员处理建议
-- 实时状态更新和进度跟踪
-
-### 🛒 二手市场
-- 发布二手物品
-- 浏览和搜索物品
-- 联系卖家功能
-
-### 📢 公告管理
-- 物业/管理员发布公告
-- 公告编辑和删除
-- 按时间排序显示
-
-### 👥 用户管理
-- 用户信息管理
-- 角色权限分配
-- 用户数据统计
-
-## 🎭 演示账户
-
-系统预置了以下演示账户供测试使用：
-
-### 👤 业主账户
-- **邮箱**: `resident@example.com`
-- **密码**: `password123`
-- **权限**: 基础用户权限，可以提交建议、使用二手市场等
-
-### 🏢 物业账户
-- **邮箱**: `property@example.com`
-- **密码**: `property123`
-- **权限**: 物业管理权限，可以处理建议、发布公告等
-
-### 👑 管理员账户
-- **邮箱**: `admin@example.com`
-- **密码**: `admin123`
-- **权限**: 最高管理权限，可以管理用户、系统配置等
-
-> **注意**: 这些是演示账户，仅用于功能测试。生产环境中请及时修改或删除这些默认账户。
+- 🏠 **业主服务**: 房屋信息管理、缴费记录、维修申请
+- 🏢 **物业管理**: 公告发布、费用管理、维修处理
+- 💬 **社区互动**: 建议反馈、邻里交流
+- 🛒 **二手市场**: 闲置物品交易平台
+- 👥 **用户管理**: 多角色权限控制
+- 📱 **响应式设计**: 支持手机、平板、桌面设备
 
 ## 🚀 快速开始
 
-### 使用一键管理脚本（推荐）
+### 一键管理脚本
+
+项目提供了统一的管理脚本 `manage.sh`，支持开发、构建、部署的全流程管理：
 
 ```bash
-# 显示帮助信息
+# 查看帮助
 ./manage.sh help
 
-# 交互式菜单
-./manage.sh
+# 安装依赖
+./manage.sh install
 
-# 常用命令
-./manage.sh install    # 安装所有依赖
-./manage.sh build      # 构建所有项目
-./manage.sh dev        # 启动开发环境
-./manage.sh start      # 启动生产环境
-./manage.sh status     # 查看服务状态
+# 初始化项目
+./manage.sh init
+
+# 启动开发环境
+./manage.sh dev
+
+# 构建项目
+./manage.sh build
+
+# 部署到生产环境
+./manage.sh deploy
+
+# 查看项目状态
+./manage.sh status
 ```
 
-### 手动启动
+### 手动安装
 
-1. **安装依赖**
-   ```bash
-   # 后端依赖
-   cd backend && npm install
-   
-   # 前端依赖
-   cd ../frontend && npm install
-   ```
+如果需要手动操作，可以按以下步骤：
 
-2. **启动开发环境**
-   ```bash
-   # 启动后端 (端口: 3001)
-   cd backend && npm run dev &
-   
-   # 启动前端 (端口: 5173)
-   cd frontend && npm run dev
-   ```
+#### 1. 环境要求
 
-3. **访问应用**
-   - 前端: http://localhost:5173
-   - 后端API: http://localhost:3001
+- Node.js 18+ 
+- npm 8+
 
-## 📧 邮箱验证配置
+#### 2. 安装依赖
 
-系统支持真实邮箱验证码发送功能：
-
-### 配置邮箱服务
-1. **QQ邮箱配置**（推荐）
-   ```bash
-   EMAIL_HOST=smtp.qq.com
-   EMAIL_PORT=587
-   EMAIL_SECURE=false
-   EMAIL_USER=your-email@qq.com
-   EMAIL_PASS=your-16-digit-auth-code
-   EMAIL_FROM=your-email@qq.com
-   EMAIL_ENABLED=true
-   ```
-
-2. **获取QQ邮箱授权码**
-   - 登录QQ邮箱 → 设置 → 账户
-   - 开启"IMAP/SMTP服务"
-   - 发送短信获取16位授权码
-
-3. **其他邮箱服务商**
-   - Gmail: smtp.gmail.com:587
-   - 163邮箱: smtp.163.com:587
-   - 详细配置请参考: [邮箱配置指南](docs/EMAIL_SETUP_GUIDE.md)
-
-### 邮件特性
-- 🎨 美观的HTML邮件模板
-- 🔐 6位数字验证码
-- ⏰ 5分钟有效期
-- 📱 响应式设计，支持手机查看
-
-## 🚀 部署指南
-
-### 本地开发环境
-
-#### 快速启动
 ```bash
-# 使用管理脚本一键启动
-./manage.sh quick-start
+# 后端依赖
+cd backend && npm install
 
-# 或者使用测试脚本
-./test-services.sh
+# 前端依赖  
+cd frontend && npm install
 ```
 
-#### 手动启动
-```bash
-# 启动后端
-cd backend && npm install && npm start &
+#### 3. 环境配置
 
-# 启动前端
-cd frontend && npm install && npm run dev &
-```
+后端环境配置文件 `backend/.env`：
 
-### 生产环境部署
-
-#### Render平台部署（推荐）
-
-1. **准备部署**
-   ```bash
-   # 运行部署准备脚本
-   ./prepare-deploy.sh
-   ```
-
-2. **推送代码到Git仓库**
-   ```bash
-   git add .
-   git commit -m "准备部署到Render"
-   git push origin main
-   ```
-
-3. **在Render创建服务**
-   - 后端服务：Web Service
-   - 前端服务：Static Site
-   
-   详细步骤请查看：[部署指南](DEPLOYMENT_GUIDE.md)
-
-4. **验证部署**
-   - 后端健康检查：`https://your-backend.onrender.com/api/health`
-   - 前端访问：`https://your-frontend.onrender.com`
-
-#### 其他部署平台
-- **Vercel**: 适合前端静态网站部署
-- **Heroku**: 适合全栈应用部署
-- **Netlify**: 适合前端部署
-- **Railway**: 适合后端API部署
-
-### 环境变量配置
-
-#### 后端环境变量
-```bash
-NODE_ENV=production
+```env
+# 服务器配置
 PORT=3000
-JWT_SECRET=your-super-secret-jwt-key
-FRONTEND_URL=https://your-frontend-domain.com
+NODE_ENV=development
 
-# 邮箱服务配置
-EMAIL_HOST=smtp.qq.com
-EMAIL_PORT=587
-EMAIL_SECURE=false
-EMAIL_USER=your-email@qq.com
-EMAIL_PASS=your-auth-code
-EMAIL_FROM=your-email@qq.com
-EMAIL_ENABLED=true
+# JWT配置
+JWT_SECRET=your-super-secret-jwt-key-change-in-production
+JWT_EXPIRES_IN=7d
+
+# 阿里云短信配置 (可选)
+ALIBABA_CLOUD_ACCESS_KEY_ID=your-access-key-id
+ALIBABA_CLOUD_ACCESS_KEY_SECRET=your-access-key-secret
+ALIBABA_CLOUD_SMS_SIGN_NAME=your-sms-sign
+ALIBABA_CLOUD_SMS_TEMPLATE_CODE=your-template-code
 ```
 
-#### 前端环境变量
+#### 4. 启动服务
+
 ```bash
-VITE_API_BASE_URL=https://your-backend-domain.com
-VITE_APP_TITLE=智慧小区生活平台
-VITE_NODE_ENV=production
+# 启动后端 (端口 3000)
+cd backend && npm run dev
+
+# 启动前端 (端口 5173)
+cd frontend && npm run dev
 ```
+
+## 🎯 演示账户
+
+| 角色 | 邮箱 | 密码 | 权限 |
+|------|------|------|------|
+| 管理员 | admin@example.com | admin123 | 全部功能 |
+| 物业 | property@example.com | property123 | 物业管理 |
+| 业主 | resident@example.com | password123 | 业主服务 |
 
 ## 🛠️ 技术栈
 
-### 前端技术
-- **React 18** - 用户界面库
-- **TypeScript** - 类型安全的JavaScript
-- **Vite** - 快速构建工具
-- **Tailwind CSS** - 实用优先的CSS框架
-- **React Router** - 客户端路由
-- **Context API** - 状态管理
+### 前端
+- **框架**: React 18 + TypeScript
+- **构建工具**: Vite
+- **UI组件**: Ant Design
+- **路由**: React Router
+- **状态管理**: React Context
+- **HTTP客户端**: Axios
 
-### 后端技术
-- **Node.js** - JavaScript运行时
-- **TypeScript** - 类型安全开发
-- **Express.js** - Web应用框架
-- **SQLite** - 轻量级数据库
-- **JWT** - 身份认证
-- **bcryptjs** - 密码加密
-- **Joi** - 数据验证
-- **Nodemailer** - 邮件发送服务
+### 后端
+- **运行时**: Node.js + TypeScript
+- **框架**: Express.js
+- **数据存储**: 内存数据库 (开发环境)
+- **身份验证**: JWT
+- **文件上传**: Multer
+- **短信服务**: 阿里云短信
 
 ## 📁 项目结构
 
-### 前端结构
 ```
-frontend/
-├── src/
-│   ├── components/     # 可复用组件
-│   ├── contexts/       # React Context
-│   ├── services/       # API服务
-│   ├── pages/          # 页面组件
-│   └── types.ts        # TypeScript类型定义
-├── package.json
-└── vite.config.ts
-```
-
-### 后端结构
-```
-backend/
-├── src/
-│   ├── routes/         # API路由
-│   ├── services/       # 业务服务（邮箱、短信等）
-│   ├── middleware/     # 中间件
-│   ├── config/         # 配置文件
-│   └── types/          # 类型定义
-├── data/               # SQLite数据库
-├── logs/               # 日志文件
-├── start-with-env.sh   # 环境变量启动脚本
-└── package.json
+smart-community/
+├── frontend/                 # 前端应用
+│   ├── src/
+│   │   ├── components/      # 通用组件
+│   │   ├── pages/          # 页面组件
+│   │   ├── services/       # API服务
+│   │   ├── types/          # TypeScript类型
+│   │   └── utils/          # 工具函数
+│   └── package.json
+├── backend/                  # 后端应用
+│   ├── src/
+│   │   ├── controllers/    # 控制器
+│   │   ├── middleware/     # 中间件
+│   │   ├── routes/         # 路由
+│   │   ├── services/       # 业务服务
+│   │   ├── types/          # TypeScript类型
+│   │   └── utils/          # 工具函数
+│   └── package.json
+├── manage.sh                 # 一键管理脚本
+├── optimize-ts.sh           # TypeScript优化脚本
+└── README.md
 ```
 
-## 🔧 管理脚本功能
+## ⚡ 性能优化
 
-### 开发相关
-- `install` - 安装所有依赖
-- `build` - 构建所有项目
-- `dev` - 启动开发环境（前后端同时启动）
-- `start` - 启动生产环境
+### TypeScript 内存优化
 
-### 服务管理
-- `stop` - 停止所有服务
-- `status` - 查看服务状态
-- `logs` - 查看服务日志
-
-### 测试和部署
-- `test` - 运行测试
-- `deploy` - 部署管理
-- `manage` - 项目管理（清理、更新等）
-
-## 🌐 部署指南
-
-### Render平台部署
-
-1. **后端部署**
-   - 使用 `backend/render.yaml` 配置
-   - 自动检测并部署Node.js应用
-   - 配置环境变量和持久化存储
-
-2. **前端部署**
-   - 使用 `frontend/render.yaml` 配置
-   - 静态站点部署
-   - 自动构建和发布
-
-详细部署步骤请参考：
-- [后端部署指南](./backend/DEPLOYMENT.md)
-- [前端部署指南](./frontend/DEPLOYMENT.md)
-
-### Docker部署
+项目已经过 TypeScript 内存优化配置，如果遇到 tsserver 占用内存过高的问题：
 
 ```bash
-# 构建后端镜像
-cd backend && docker build -t smart-community-backend .
+# 运行 TypeScript 优化脚本
+./optimize-ts.sh
 
-# 构建前端镜像
-cd frontend && docker build -t smart-community-frontend .
-
-# 使用docker-compose启动
-docker-compose up -d
+# 或者在 Cursor/VSCode 中重启 TypeScript 服务
+# Ctrl+Shift+P -> "TypeScript: Restart TS Server"
 ```
 
-## 🧪 测试
+详细的优化说明请查看 [TYPESCRIPT_OPTIMIZATION.md](./TYPESCRIPT_OPTIMIZATION.md)
 
-### API测试
+### 主要优化措施
+
+- ✅ 启用 `skipLibCheck` 跳过库文件检查
+- ✅ 配置增量编译缓存
+- ✅ 精确的文件包含/排除规则
+- ✅ 禁用不必要的 TypeScript 功能
+- ✅ 优化 VSCode/Cursor 工作区设置
+
+## 🚀 部署
+
+### 开发环境
 ```bash
-# 使用管理脚本
-./manage.sh test
-
-# 或手动测试
-cd backend && node test-api.js
-
-# 邮箱功能测试
-./test-email-registration.sh
-./test-real-email.sh your-email@example.com
+./manage.sh dev
 ```
 
-### 前端测试
+### 生产环境
 ```bash
-cd frontend && npm test
+# 构建并部署
+./manage.sh deploy
+
+# 停止服务
+./manage.sh stop
 ```
 
-## 📊 数据库设计
+### Nginx 配置示例
 
-### 主要数据表
-- **users** - 用户信息（邮箱注册）
-- **suggestions** - 建议反馈
-- **suggestion_progress** - 建议处理进度
-- **market_items** - 二手市场物品
-- **announcements** - 公告信息
-
-### 用户表结构
-```sql
-CREATE TABLE users (
-  id TEXT PRIMARY KEY,
-  email TEXT UNIQUE,           -- 邮箱（必填）
-  password TEXT NOT NULL,
-  name TEXT NOT NULL,
-  role TEXT NOT NULL,
-  building TEXT,               -- 楼栋
-  unit TEXT,                   -- 单元号
-  room TEXT,                   -- 房间号
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
-);
+```nginx
+server {
+    listen 80;
+    server_name your-domain.com;
+    
+    # 前端静态文件
+    location / {
+        root /path/to/frontend/dist;
+        try_files $uri $uri/ /index.html;
+    }
+    
+    # 后端 API
+    location /api {
+        proxy_pass http://localhost:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+    
+    # 文件上传大小限制
+    client_max_body_size 50M;
+}
 ```
 
-## 🔐 安全特性
+## 📝 开发指南
 
-- **JWT token认证**: 7天有效期
-- **密码bcrypt加密**: 10轮加密
-- **角色权限控制**: 三级权限管理
-- **输入数据验证**: Joi验证库
-- **CORS跨域保护**: 配置允许的域名
-- **验证码安全**: 5分钟有效期，防暴力破解
-- **邮箱验证**: 防止恶意注册
+### 添加新功能
 
-## 🎯 开发规范
+1. **后端 API**
+   ```bash
+   # 在 backend/src/routes/ 添加路由
+   # 在 backend/src/controllers/ 添加控制器
+   # 在 backend/src/services/ 添加业务逻辑
+   ```
 
-- TypeScript严格模式
-- ESLint代码检查
-- Prettier代码格式化
-- Git提交规范
-- API RESTful设计
+2. **前端页面**
+   ```bash
+   # 在 frontend/src/pages/ 添加页面组件
+   # 在 frontend/src/services/ 添加 API 调用
+   # 更新路由配置
+   ```
 
-## 📈 性能优化
+### 代码规范
 
-- Vite快速构建
-- 代码分割和懒加载
-- 静态资源优化
-- 数据库查询优化
-- 缓存策略
+- 使用 TypeScript 严格模式
+- 遵循 ESLint 规则
+- 使用 Prettier 格式化代码
+- 编写单元测试
 
 ## 🤝 贡献指南
 
-1. Fork项目
-2. 创建功能分支
-3. 提交代码
-4. 创建Pull Request
-
-## 📝 更新日志
-
-### v2.0.0 (2025-05-31)
-- ✨ 新增邮箱验证注册功能
-- ✨ 支持单元号字段
-- ✨ 美观的HTML邮件模板
-- 🔧 优化用户认证系统
-- 📚 完善文档和配置指南
-
-### v1.0.0 (2024-01-01)
-- 初始版本发布
-- 完整的前后端功能
-- 部署配置和文档
-
-## 📞 技术支持
-
-- 项目文档: [README.md](./README.md)
-- 后端文档: [backend/README.md](./backend/README.md)
-- 前端文档: [frontend/README.md](./frontend/README.md)
-- 部署指南: [DEPLOYMENT.md](./backend/DEPLOYMENT.md)
-- 邮箱配置: [docs/EMAIL_SETUP_GUIDE.md](docs/EMAIL_SETUP_GUIDE.md)
-- 用户指南: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
+1. Fork 项目
+2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
 
 ## 📄 许可证
 
-MIT License
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情
+
+## 🆘 问题反馈
+
+如果遇到问题，请：
+
+1. 查看 [TYPESCRIPT_OPTIMIZATION.md](./TYPESCRIPT_OPTIMIZATION.md) 了解性能优化
+2. 运行 `./manage.sh status` 检查项目状态
+3. 查看控制台错误信息
+4. 提交 Issue 描述问题
 
 ---
 
-## 🎉 快速体验
-
-```bash
-# 克隆项目
-git clone <repository-url>
-cd 智慧小区生活平台
-
-# 一键启动
-./manage.sh install
-./manage.sh dev
-
-# 访问应用
-open http://localhost:5173
-
-# 使用演示账户登录测试
-# 业主: resident@example.com / password123
-# 物业: property@example.com / property123  
-# 管理员: admin@example.com / admin123
-```
-
-祝您使用愉快！ 🏠✨
+**智慧moma生活平台** - 让社区生活更美好 🏡

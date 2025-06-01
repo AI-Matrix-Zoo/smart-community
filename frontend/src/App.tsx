@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Button } from './components/UIElements';
-import { HomeIcon, LightbulbIcon, ShoppingBagIcon, UserCircleIcon, ArrowRightOnRectangleIcon, ShieldCheckIcon } from './components/Icons';
+import { HomeIcon, LightbulbIcon, ShoppingBagIcon, UserCircleIcon, ArrowRightOnRectangleIcon, ShieldCheckIcon, CogIcon } from './components/Icons';
 import { UserRole } from './types';
+import UserProfileForm from './components/UserProfileForm';
 
 // 页面组件
 import HomePage from './pages/HomePage';
@@ -18,6 +19,7 @@ import AdminDashboardPage from './pages/admin/AdminDashboardPage';
 const Navigation: React.FC = () => {
   const { currentUser, logout } = useAuth();
   const location = useLocation();
+  const [isProfileFormOpen, setIsProfileFormOpen] = useState(false);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -34,7 +36,7 @@ const Navigation: React.FC = () => {
             <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-green-500 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">智</span>
             </div>
-            <span className="text-xl font-bold text-gray-800">智慧小区</span>
+            <span className="text-xl font-bold text-gray-800">智慧moma</span>
           </Link>
 
           {/* 主导航 */}
@@ -51,8 +53,6 @@ const Navigation: React.FC = () => {
               首页
             </Link>
             
-            {currentUser && (
-              <>
                 <Link
                   to="/suggestions"
                   className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -62,7 +62,7 @@ const Navigation: React.FC = () => {
                   }`}
                 >
                   <LightbulbIcon className="w-4 h-4 mr-2" />
-                  建议反馈
+                  个人物业建议
                 </Link>
                 
                 <Link
@@ -74,16 +74,18 @@ const Navigation: React.FC = () => {
                   }`}
                 >
                   <ShoppingBagIcon className="w-4 h-4 mr-2" />
-                  二手市场
+                  个人闲置市场
                 </Link>
 
+            {currentUser && (
+              <>
                 {/* 管理员后台链接 - 只对管理员和物业人员显示 */}
                 {(currentUser.role === UserRole.ADMIN || currentUser.role === UserRole.PROPERTY) && (
                   <Link
                     to="/admin"
                     className={`flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors ${
                       isActive('/admin') 
-                        ? 'bg-red-100 text-red-700' 
+                        ? 'bg-blue-100 text-blue-700' 
                         : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                     }`}
                   >
@@ -103,6 +105,15 @@ const Navigation: React.FC = () => {
                   <UserCircleIcon className="w-5 h-5 text-gray-600" />
                   <span className="text-sm text-gray-700">{currentUser.name || currentUser.email}</span>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsProfileFormOpen(true)}
+                  className="flex items-center space-x-1"
+                  title="编辑个人信息"
+                >
+                  <CogIcon className="w-4 h-4" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -144,7 +155,7 @@ const Navigation: React.FC = () => {
                 }`}
               >
                 <LightbulbIcon className="w-5 h-5 mb-1" />
-                建议反馈
+                个人物业建议
               </Link>
               
               <Link
@@ -156,7 +167,7 @@ const Navigation: React.FC = () => {
                 }`}
               >
                 <ShoppingBagIcon className="w-5 h-5 mb-1" />
-                二手市场
+                个人闲置市场
               </Link>
 
               {/* 移动端管理员后台链接 */}
@@ -177,6 +188,14 @@ const Navigation: React.FC = () => {
           </div>
         )}
       </div>
+      
+      {/* 用户信息编辑模态框 */}
+      {currentUser && (
+        <UserProfileForm
+          isOpen={isProfileFormOpen}
+          onClose={() => setIsProfileFormOpen(false)}
+        />
+      )}
     </nav>
   );
 };
@@ -192,26 +211,12 @@ const AppContent: React.FC = () => {
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
-          <Route 
-            path="/suggestions" 
-            element={
-              <ProtectedRoute>
-                <SuggestionsPage />
-              </ProtectedRoute>
-            } 
-          />
-          <Route 
-            path="/market" 
-            element={
-              <ProtectedRoute>
-                <MarketPage />
-              </ProtectedRoute>
-            } 
-          />
+          <Route path="/suggestions" element={<SuggestionsPage />} />
+          <Route path="/market" element={<MarketPage />} />
           <Route 
             path="/admin" 
             element={
-              <ProtectedRoute>
+              <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.PROPERTY]}>
                 <AdminDashboardPage />
               </ProtectedRoute>
             } 
@@ -223,7 +228,7 @@ const AppContent: React.FC = () => {
       <footer className="bg-white border-t border-gray-200 mt-16">
         <div className="container mx-auto px-4 py-8">
           <div className="text-center text-gray-600">
-            <p className="mb-2">© 2024 智慧小区生活平台. 让邻里生活更美好.</p>
+            <p className="mb-2">© 2024 智慧moma生活平台. 让邻里生活更美好.</p>
             <p className="text-sm">技术支持：智慧社区解决方案</p>
           </div>
         </div>

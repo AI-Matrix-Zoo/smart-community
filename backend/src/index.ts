@@ -78,7 +78,7 @@ app.use('/api/admin', adminRoutes);
 app.get('/health', (req, res) => {
   res.json({
     success: true,
-    message: '智慧小区生活平台后端服务运行正常',
+    message: '智慧moma生活平台后端服务运行正常',
     timestamp: new Date().toISOString(),
     version: '1.0.0'
   });
@@ -88,7 +88,7 @@ app.get('/health', (req, res) => {
 app.get('/api/health', (req, res) => {
   res.json({
     success: true,
-    message: '智慧小区生活平台API服务运行正常',
+    message: '智慧moma生活平台API服务运行正常',
     timestamp: new Date().toISOString(),
     version: '1.0.0'
   });
@@ -115,7 +115,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 
 // 启动服务器
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 智慧小区生活平台后端服务启动成功`);
+  console.log(`🚀 智慧moma生活平台后端服务启动成功`);
   console.log(`📍 本地地址: http://localhost:${PORT}`);
   console.log(`📍 公网地址: http://123.56.64.5:${PORT}`);
   console.log(`🌍 环境: ${process.env.NODE_ENV || 'development'}`);

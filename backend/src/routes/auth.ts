@@ -3,7 +3,8 @@ import bcrypt from 'bcryptjs';
 import jwt, { SignOptions } from 'jsonwebtoken';
 import Joi from 'joi';
 import { db } from '../config/database';
-import { LoginRequest, RegisterRequest, ApiResponse, User, UserRole, SendVerificationCodeRequest, VerifyCodeRequest } from '../types';
+import { authenticateToken } from '../middleware/auth';
+import { AuthenticatedRequest, UserRole, LoginRequest, RegisterRequest, SendVerificationCodeRequest, VerifyCodeRequest } from '../types';
 import { emailService } from '../services/emailService';
 
 const router = express.Router();
@@ -117,6 +118,16 @@ const registerSchema = Joi.object({
   verificationType: Joi.string().valid('email').required().messages({
     'any.only': '验证类型必须是email',
     'any.required': '验证类型是必填项'
+  })
+});
+
+const updateUserSchema = Joi.object({
+  name: Joi.string().optional(),
+  building: Joi.string().optional(),
+  unit: Joi.string().optional(),
+  room: Joi.string().optional(),
+  password: Joi.string().min(6).optional().messages({
+    'string.min': '密码至少6位'
   })
 });
 
@@ -313,6 +324,106 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
         });
       }
     );
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '服务器错误'
+    });
+  }
+});
+
+// 更新用户信息
+router.put('/profile', authenticateToken, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  try {
+    const { error } = updateUserSchema.validate(req.body);
+    if (error) {
+      res.status(400).json({
+        success: false,
+        message: error.details[0].message
+      });
+      return;
+    }
+
+    const user = req.user!;
+    const { name, building, unit, room, password } = req.body;
+
+    // 构建更新字段
+    const updateFields: string[] = [];
+    const updateValues: any[] = [];
+
+    if (name !== undefined) {
+      updateFields.push('name = ?');
+      updateValues.push(name);
+    }
+    if (building !== undefined) {
+      updateFields.push('building = ?');
+      updateValues.push(building);
+    }
+    if (unit !== undefined) {
+      updateFields.push('unit = ?');
+      updateValues.push(unit);
+    }
+    if (room !== undefined) {
+      updateFields.push('room = ?');
+      updateValues.push(room);
+    }
+    if (password) {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      updateFields.push('password = ?');
+      updateValues.push(hashedPassword);
+    }
+
+    if (updateFields.length === 0) {
+      res.status(400).json({
+        success: false,
+        message: '没有提供要更新的字段'
+      });
+      return;
+    }
+
+    updateFields.push('updated_at = CURRENT_TIMESTAMP');
+    updateValues.push(user.userId);
+
+    const updateQuery = `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?`;
+
+    db.run(updateQuery, updateValues, function(err: any): void {
+      if (err) {
+        res.status(500).json({
+          success: false,
+          message: '更新用户信息失败'
+        });
+        return;
+      }
+
+      if (this.changes === 0) {
+        res.status(404).json({
+          success: false,
+          message: '用户不存在'
+        });
+        return;
+      }
+
+      // 获取更新后的用户信息
+      db.get(
+        'SELECT id, email, name, role, building, unit, room FROM users WHERE id = ?',
+        [user.userId],
+        (selectErr: any, updatedUser: any): void => {
+          if (selectErr) {
+            res.status(500).json({
+              success: false,
+              message: '获取更新后的用户信息失败'
+            });
+            return;
+          }
+
+          res.json({
+            success: true,
+            data: updatedUser,
+            message: '用户信息更新成功'
+          });
+        }
+      );
+    });
   } catch (error) {
     res.status(500).json({
       success: false,

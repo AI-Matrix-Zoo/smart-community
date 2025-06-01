@@ -64,7 +64,7 @@ router.post('/', authenticateToken, requirePropertyOrAdmin, (req: AuthenticatedR
   db.run(
     `INSERT INTO announcements (id, content, author_id, author_name, role_of_author)
      VALUES (?, ?, ?, ?, ?)`,
-    [announcementId, content, user.userId, user.name || user.phone, user.role],
+    [announcementId, content, user.userId, user.name || user.phone || '未知用户', user.role],
     function(err: any): void {
       if (err) {
         res.status(500).json({
@@ -78,7 +78,7 @@ router.post('/', authenticateToken, requirePropertyOrAdmin, (req: AuthenticatedR
         id: announcementId,
         content,
         authorId: user.userId,
-        authorName: user.name || user.phone,
+        authorName: user.name || user.phone || '未知用户',
         roleOfAuthor: user.role,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()

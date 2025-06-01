@@ -101,8 +101,8 @@ const RegisterPage: React.FC = () => {
     
     if (!email.trim() || !password.trim() || !displayName.trim() || 
         !building.trim() || !unit.trim() || !room.trim() || !verificationCode.trim()) {
-      setError('所有字段均为必填项。');
-      return;
+        setError('所有字段均为必填项。');
+        return;
     }
     
     // 验证邮箱格式
@@ -113,7 +113,7 @@ const RegisterPage: React.FC = () => {
 
     if (verificationCode.length !== 6) {
       setError('请输入6位验证码。');
-      return;
+        return;
     }
 
     setIsRegistering(true);
@@ -126,9 +126,9 @@ const RegisterPage: React.FC = () => {
 
     const registrationDetails: RegistrationData = { 
       email,
-      password, 
-      name: displayName, 
-      building, 
+        password, 
+        name: displayName, 
+        building, 
       unit,
       room,
       verificationCode,
@@ -174,7 +174,7 @@ const RegisterPage: React.FC = () => {
             
             <div className="flex space-x-2">
               <div className="flex-1">
-                <Input
+          <Input
                   label="验证码"
                   id="verificationCode"
                   type="text"
@@ -182,7 +182,7 @@ const RegisterPage: React.FC = () => {
                   onChange={(e) => setVerificationCode(e.target.value)}
                   placeholder="请输入6位验证码"
                   maxLength={6}
-                  required
+            required
                 />
               </div>
               <div className="flex items-end">
@@ -243,12 +243,12 @@ const RegisterPage: React.FC = () => {
 
           {/* 住址信息 */}
           <div className="grid grid-cols-3 gap-3">
-            <Input
+          <Input
               label="楼栋"
-              id="building"
-              type="text"
-              value={building}
-              onChange={(e) => setBuilding(e.target.value)}
+            id="building"
+            type="text"
+            value={building}
+            onChange={(e) => setBuilding(e.target.value)}
               placeholder="如: 1栋"
               required
             />
@@ -259,17 +259,17 @@ const RegisterPage: React.FC = () => {
               value={unit}
               onChange={(e) => setUnit(e.target.value)}
               placeholder="如: 1单元"
-              required
-            />
-            <Input
-              label="房号"
-              id="room"
-              type="text"
-              value={room}
-              onChange={(e) => setRoom(e.target.value)}
+            required
+          />
+          <Input
+            label="房号"
+            id="room"
+            type="text"
+            value={room}
+            onChange={(e) => setRoom(e.target.value)}
               placeholder="如: 101"
-              required
-            />
+            required
+          />
           </div>
 
           {error && <p className="text-sm text-red-600 bg-red-100 p-3 rounded-md text-center">{error}</p>}
@@ -286,9 +286,9 @@ const RegisterPage: React.FC = () => {
             </Button>
           </div>
           
-          <div className="text-sm text-center text-slate-500 mt-4">
-            <p>已有账户? <Link to="/login" className="font-medium text-primary hover:text-primary-dark">立即登录</Link></p>
-          </div>
+           <div className="text-sm text-center text-slate-500 mt-4">
+             <p>已有账户? <Link to="/login" className="font-medium text-primary hover:text-primary-dark">立即登录</Link></p>
+           </div>
         </form>
       </div>
     </div>

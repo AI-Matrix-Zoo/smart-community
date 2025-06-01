@@ -116,7 +116,7 @@ const SuggestionManagementTab: React.FC = () => {
     <div className="space-y-6">
       <div className="flex items-center space-x-2 text-2xl font-semibold text-slate-700">
         <LightbulbIcon className="w-8 h-8" />
-        <span>物业建议管理</span>
+        <span>个人物业建议管理</span>
       </div>
 
       <div className="space-y-4">

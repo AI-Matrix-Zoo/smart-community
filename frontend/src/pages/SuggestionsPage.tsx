@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import { Suggestion, SuggestionStatus, UserRole } from '../types';
-import { getSuggestions, addSuggestion, updateSuggestionStatus, addSuggestionProgress } from '../services/apiService';
+import { getSuggestions, addSuggestion, updateSuggestionStatus, addSuggestionProgress, addSuggestionComment, toggleSuggestionLike } from '../services/apiService';
 import { Button, LoadingSpinner, Badge, Modal, Textarea, Select } from '../components/UIElements';
-import { PlusCircleIcon, ChevronDownIcon, ChatBubbleLeftEllipsisIcon, LightbulbIcon, ArrowPathIcon } from '../components/Icons';
+import { PlusCircleIcon, ChevronDownIcon, ChatBubbleLeftEllipsisIcon, LightbulbIcon, ArrowPathIcon, HandThumbUpIcon, ChatBubbleLeftIcon } from '../components/Icons';
 import SuggestionForm from '../components/SuggestionForm';
 import { AuthContext, useAuth } from '../contexts/AuthContext';
 
@@ -10,14 +10,18 @@ const SuggestionItem: React.FC<{
     suggestion: Suggestion; 
     onStatusChange: (id: string, status: SuggestionStatus, updateText: string) => void; 
     onAddProgress: (id: string, updateText: string) => void; 
-}> = ({ suggestion, onStatusChange, onAddProgress }) => {
+    onAddComment: (id: string, content: string) => void;
+    onToggleLike: (id: string) => void;
+}> = ({ suggestion, onStatusChange, onAddProgress, onAddComment, onToggleLike }) => {
   const auth = useContext(AuthContext);
   const [expanded, setExpanded] = useState(false);
   const [showStatusModal, setShowStatusModal] = useState(false);
   const [showProgressModal, setShowProgressModal] = useState(false);
+  const [showCommentModal, setShowCommentModal] = useState(false);
   const [newStatus, setNewStatus] = useState<SuggestionStatus>(suggestion.status);
   const [statusUpdateText, setStatusUpdateText] = useState('');
   const [progressText, setProgressText] = useState('');
+  const [commentText, setCommentText] = useState('');
 
   const canManage = auth?.currentUser && (auth.currentUser.role === UserRole.PROPERTY || auth.currentUser.role === UserRole.ADMIN);
 
@@ -51,6 +55,23 @@ const SuggestionItem: React.FC<{
     setProgressText('');
   };
 
+  const handleCommentSubmit = () => {
+    if (!commentText.trim()) {
+      alert("请输入评论内容。");
+      return;
+    }
+    onAddComment(suggestion.id, commentText);
+    setShowCommentModal(false);
+    setCommentText('');
+  };
+
+  const handleLikeClick = () => {
+    if (!auth?.currentUser) {
+      window.location.href = '/login';
+      return;
+    }
+    onToggleLike(suggestion.id);
+  };
 
   return (
     <div className="bg-white shadow-lg rounded-xl p-6 transition-shadow duration-300 hover:shadow-xl">
@@ -139,6 +160,98 @@ const SuggestionItem: React.FC<{
           </Modal>
         </>
       )}
+
+      {/* 点赞和评论统计 */}
+      <div className="flex items-center space-x-4 pt-2 border-t border-slate-100">
+        <button
+          onClick={handleLikeClick}
+          className={`flex items-center space-x-1 px-3 py-1 rounded-md text-sm transition-colors ${
+            suggestion.isLikedByCurrentUser 
+              ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          <HandThumbUpIcon className="w-4 h-4" />
+          <span>{suggestion.likeCount || 0}</span>
+        </button>
+        
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center space-x-1 px-3 py-1 rounded-md text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+        >
+          <ChatBubbleLeftIcon className="w-4 h-4" />
+          <span>{suggestion.comments?.length || 0} 评论</span>
+        </button>
+
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="text-sm text-blue-600 hover:text-blue-800"
+        >
+          {expanded ? '收起' : '展开详情'}
+        </button>
+
+        {auth?.currentUser && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCommentModal(true)}
+          >
+            添加评论
+          </Button>
+        )}
+        {!auth?.currentUser && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.location.href = '/login'}
+          >
+            登录后评论
+          </Button>
+        )}
+      </div>
+
+      {expanded && (
+        <div className="mt-4 pt-4 border-t border-slate-100 space-y-4">
+          {/* 评论区 */}
+          {suggestion.comments && suggestion.comments.length > 0 && (
+            <div>
+              <h4 className="font-medium text-slate-700 mb-2">用户评论</h4>
+              <div className="space-y-2">
+                {suggestion.comments.map((comment) => (
+                  <div key={comment.id} className="bg-blue-50 p-3 rounded-md">
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{comment.content}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {comment.userName} - {new Date(comment.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {suggestion.progressUpdates.length === 0 && (!suggestion.comments || suggestion.comments.length === 0) && (
+            <p className="text-sm text-slate-500 italic">暂无进展更新和评论。</p>
+          )}
+        </div>
+      )}
+
+      {/* 评论模态框 */}
+      <Modal isOpen={showCommentModal} onClose={() => setShowCommentModal(false)} title="添加评论">
+        <div className="space-y-4">
+          <Textarea 
+            label="评论内容"
+            placeholder="请输入您的评论..."
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            required
+            rows={3}
+          />
+          <div className="flex justify-end space-x-2">
+            <Button variant="ghost" onClick={() => setShowCommentModal(false)}>取消</Button>
+            <Button onClick={handleCommentSubmit}>发表评论</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
@@ -190,39 +303,35 @@ const SuggestionsPage: React.FC = () => {
   }, [currentUser]);
 
   useEffect(() => {
-    if (!isLoadingAuth && currentUser) {
+    if (!isLoadingAuth) {
       fetchSuggestionsData();
       setupAutoRefresh();
-    } else if (!isLoadingAuth && !currentUser) {
-      setSuggestions([]);
-      setIsLoading(false);
-      setError("请登录后查看或提交建议。");
     }
-  }, [isLoadingAuth, currentUser, fetchSuggestionsData]);
+  }, [isLoadingAuth, fetchSuggestionsData]);
 
   const handleManualRefresh = useCallback(() => {
-    if (currentUser) fetchSuggestionsData(true);
-  }, [fetchSuggestionsData, currentUser]);
+    fetchSuggestionsData(true);
+  }, [fetchSuggestionsData]);
 
   const setupAutoRefresh = useCallback(() => {
     if (refreshIntervalRef.current) {
       clearInterval(refreshIntervalRef.current);
     }
     refreshIntervalRef.current = setInterval(() => {
-      if (currentUser) fetchSuggestionsData(true);
+      fetchSuggestionsData(true);
     }, 30000);
-  }, [fetchSuggestionsData, currentUser]);
+  }, [fetchSuggestionsData]);
 
   const handleWindowFocus = useCallback(() => {
-    if (!currentUser || !lastUpdatedRef.current) return;
+    if (!lastUpdatedRef.current) return;
     const timeSinceLastUpdate = Date.now() - lastUpdatedRef.current.getTime();
     if (timeSinceLastUpdate > 10000) {
       fetchSuggestionsData(true);
     }
-  }, [fetchSuggestionsData, currentUser]);
+  }, [fetchSuggestionsData]);
 
   useEffect(() => {
-    if (!isLoadingAuth && currentUser) {
+    if (!isLoadingAuth) {
       window.addEventListener('focus', handleWindowFocus);
       const handleVisibilityChange = () => {
         if (!document.hidden) {
@@ -239,7 +348,7 @@ const SuggestionsPage: React.FC = () => {
         document.removeEventListener('visibilitychange', handleVisibilityChange);
       };
     }
-  }, [isLoadingAuth, currentUser, handleWindowFocus, setupAutoRefresh]);
+  }, [isLoadingAuth, handleWindowFocus, setupAutoRefresh]);
 
   useEffect(() => {
     if (!isLoadingAuth) {
@@ -282,21 +391,31 @@ const SuggestionsPage: React.FC = () => {
     }
   };
 
+  const handleAddComment = async (id: string, content: string) => {
+    try {
+      await addSuggestionComment(id, content);
+      fetchSuggestionsData(true);
+    } catch (err) {
+      alert('添加评论失败，请重试。');
+      console.error(err);
+    }
+  };
+
+  const handleToggleLike = async (id: string) => {
+    try {
+      await toggleSuggestionLike(id);
+      fetchSuggestionsData(true);
+    } catch (err) {
+      alert('点赞操作失败，请重试。');
+      console.error(err);
+    }
+  };
+
   if (isLoading) {
     return <div className="flex justify-center items-center h-64"><LoadingSpinner size="lg" /></div>;
   }
 
-  if (!currentUser && error) {
-    return (
-        <div className="text-center py-12">
-            <LightbulbIcon className="w-16 h-16 mx-auto text-slate-400 mb-4" />
-            <p className="text-xl text-slate-600 mb-2">{error}</p>
-            <Button variant="primary" onClick={() => window.location.href = '/login'}>前往登录</Button>
-        </div>
-    );
-  }
-  
-  if (currentUser && error) {
+  if (error) {
     return (
       <div className="space-y-4">
         <div className="text-center text-red-500 bg-red-100 p-4 rounded-md">{error}</div>
@@ -317,7 +436,7 @@ const SuggestionsPage: React.FC = () => {
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800">物业建议与反馈</h1>
+          <h1 className="text-3xl font-bold text-slate-800">个人物业建议与反馈</h1>
           {lastUpdated && (
             <p className="text-sm text-slate-500 mt-1">
               最后更新: {lastUpdated.toLocaleTimeString()} 
@@ -341,6 +460,22 @@ const SuggestionsPage: React.FC = () => {
             </Button>
           </div>
         )}
+        {!currentUser && (
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleManualRefresh} 
+              disabled={isRefreshing || isDataLoading}
+              leftIcon={<ArrowPathIcon className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
+              size="sm"
+            >
+              刷新
+            </Button>
+            <Button variant="primary" onClick={() => window.location.href = '/login'}>
+              登录后提交建议
+            </Button>
+          </div>
+        )}
       </div>
 
       {currentUser && <SuggestionForm
@@ -349,12 +484,20 @@ const SuggestionsPage: React.FC = () => {
         onSubmit={handleAddSuggestion}
       />}
       
-      {suggestions.length === 0 && !isDataLoading && currentUser ? (
+      {suggestions.length === 0 && !isDataLoading ? (
         <div className="text-center py-12 bg-white rounded-xl shadow-md">
           <LightbulbIcon className="w-16 h-16 mx-auto text-slate-400 mb-4" />
           <p className="text-xl text-slate-600">暂无建议，期待您的声音！</p>
+          {!currentUser && (
+            <div className="mt-4">
+              <p className="text-slate-500 mb-3">想要提交建议？</p>
+              <Button variant="primary" onClick={() => window.location.href = '/login'}>
+                立即登录
+              </Button>
+            </div>
+          )}
         </div>
-      ) : (
+      ) : suggestions.length > 0 ? (
         <div className="space-y-6">
           {suggestions.map((suggestion) => (
             <SuggestionItem 
@@ -362,10 +505,12 @@ const SuggestionsPage: React.FC = () => {
                 suggestion={suggestion} 
                 onStatusChange={handleStatusChange} 
                 onAddProgress={handleAddProgressUpdate} 
+                onAddComment={handleAddComment}
+                onToggleLike={handleToggleLike}
             />
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 };

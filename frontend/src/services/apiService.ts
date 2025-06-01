@@ -1,4 +1,11 @@
-import { Suggestion, SuggestionStatus, MarketItem, User, Announcement } from '../types';
+import { 
+  User, 
+  MarketItem, 
+  Suggestion, 
+  SuggestionStatus, 
+  SuggestionComment,
+  Announcement
+} from '../types';
 
 // 根据环境自动切换API地址
 const getApiBaseUrl = (): string => {
@@ -178,6 +185,27 @@ export const addMarketItem = async (itemData: Omit<MarketItem, 'id' | 'postedDat
   }
 };
 
+export const getMyMarketItems = async (): Promise<MarketItem[]> => {
+  try {
+    return await apiRequest<MarketItem[]>('/market/my-items');
+  } catch (error) {
+    console.error('获取我的物品失败:', error);
+    throw error;
+  }
+};
+
+export const deleteMarketItem = async (itemId: string): Promise<boolean> => {
+  try {
+    await apiRequest(`/market/${itemId}`, {
+      method: 'DELETE',
+    });
+    return true;
+  } catch (error) {
+    console.error('删除物品失败:', error);
+    return false;
+  }
+};
+
 // --- 建议反馈API ---
 export const getSuggestions = async (): Promise<Suggestion[]> => {
   try {
@@ -188,38 +216,63 @@ export const getSuggestions = async (): Promise<Suggestion[]> => {
   }
 };
 
-export const addSuggestion = async (suggestionData: { title: string; description: string; category: string }): Promise<Suggestion> => {
+export const addSuggestion = async (suggestion: { title: string; description: string; category: string }): Promise<Suggestion> => {
   try {
     return await apiRequest<Suggestion>('/suggestions', {
       method: 'POST',
-      body: JSON.stringify(suggestionData),
+      body: JSON.stringify(suggestion),
     });
   } catch (error) {
-    console.error('添加建议失败:', error);
+    console.error('提交建议失败:', error);
     throw error;
   }
 };
 
-export const updateSuggestionStatus = async (id: string, status: SuggestionStatus, updateText: string): Promise<Suggestion> => {
+export const updateSuggestionStatus = async (id: string, status: SuggestionStatus, progressUpdateText: string): Promise<boolean> => {
   try {
-    return await apiRequest<Suggestion>(`/suggestions/${id}/status`, {
+    await apiRequest(`/suggestions/${id}/status`, {
       method: 'PUT',
-      body: JSON.stringify({ status, updateText }),
+      body: JSON.stringify({ status, progressUpdateText }),
     });
+    return true;
   } catch (error) {
     console.error('更新建议状态失败:', error);
-    throw error;
+    return false;
   }
 };
 
-export const addSuggestionProgress = async (id: string, updateText: string): Promise<Suggestion> => {
+export const addSuggestionProgress = async (id: string, updateText: string): Promise<boolean> => {
   try {
-    return await apiRequest<Suggestion>(`/suggestions/${id}/progress`, {
+    await apiRequest(`/suggestions/${id}/progress`, {
       method: 'POST',
       body: JSON.stringify({ updateText }),
     });
+    return true;
   } catch (error) {
-    console.error('添加建议进展失败:', error);
+    console.error('添加进度更新失败:', error);
+    return false;
+  }
+};
+
+export const addSuggestionComment = async (id: string, content: string): Promise<SuggestionComment> => {
+  try {
+    return await apiRequest<SuggestionComment>(`/suggestions/${id}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+  } catch (error) {
+    console.error('添加评论失败:', error);
+    throw error;
+  }
+};
+
+export const toggleSuggestionLike = async (id: string): Promise<{ isLiked: boolean }> => {
+  try {
+    return await apiRequest<{ isLiked: boolean }>(`/suggestions/${id}/like`, {
+      method: 'POST',
+    });
+  } catch (error) {
+    console.error('点赞操作失败:', error);
     throw error;
   }
 };
@@ -325,5 +378,83 @@ export const adminDeleteSuggestion = async (suggestionId: string): Promise<boole
   } catch (error) {
     console.error('删除建议失败:', error);
     return false;
+  }
+};
+
+// --- 用户认证API ---
+export const login = async (credentials: { identifier: string; password: string }): Promise<{ user: User; token: string }> => {
+  try {
+    return await apiRequest<{ user: User; token: string }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    });
+  } catch (error) {
+    console.error('登录失败:', error);
+    throw error;
+  }
+};
+
+export const register = async (userData: {
+  email: string;
+  password: string;
+  name: string;
+  building: string;
+  unit: string;
+  room: string;
+  verificationCode: string;
+  verificationType: string;
+}): Promise<{ user: User; token: string }> => {
+  try {
+    return await apiRequest<{ user: User; token: string }>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(userData),
+    });
+  } catch (error) {
+    console.error('注册失败:', error);
+    throw error;
+  }
+};
+
+export const sendVerificationCode = async (email: string): Promise<boolean> => {
+  try {
+    await apiRequest('/auth/send-verification-code', {
+      method: 'POST',
+      body: JSON.stringify({ identifier: email, type: 'email' }),
+    });
+    return true;
+  } catch (error) {
+    console.error('发送验证码失败:', error);
+    return false;
+  }
+};
+
+export const verifyCode = async (email: string, code: string): Promise<boolean> => {
+  try {
+    await apiRequest('/auth/verify-code', {
+      method: 'POST',
+      body: JSON.stringify({ identifier: email, code, type: 'email' }),
+    });
+    return true;
+  } catch (error) {
+    console.error('验证码验证失败:', error);
+    return false;
+  }
+};
+
+export const updateUserProfile = async (userData: {
+  name?: string;
+  building?: string;
+  unit?: string;
+  room?: string;
+  password?: string;
+}): Promise<User> => {
+  try {
+    return await apiRequest<User>('/auth/profile', {
+      method: 'PUT',
+      body: JSON.stringify(userData),
+    });
+  } catch (error) {
+    console.error('更新用户信息失败:', error);
+    throw error;
   }
 }; 

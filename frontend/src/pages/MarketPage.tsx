@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback, useContext, useRef } from 'rea
 import { MarketItem } from '../types';
 import { getMarketItems, addMarketItem } from '../services/apiService';
 import { Button, LoadingSpinner, Modal, Badge } from '../components/UIElements';
-import { PlusCircleIcon, ShoppingBagIcon, ArrowPathIcon } from '../components/Icons';
+import { PlusCircleIcon, ShoppingBagIcon, ArrowPathIcon, EyeIcon } from '../components/Icons';
 import MarketItemForm from '../components/MarketItemForm';
+import MyItemsModal from '../components/MyItemsModal';
 import { AuthContext } from '../contexts/AuthContext';
 
 const MarketItemCard: React.FC<{ item: MarketItem; onShowDetails: (item: MarketItem) => void; }> = ({ item, onShowDetails }) => {
@@ -58,6 +59,7 @@ const MarketPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isMyItemsOpen, setIsMyItemsOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MarketItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
@@ -180,13 +182,11 @@ const MarketPage: React.FC = () => {
 
   return (
     <div className="space-y-8">
+      <div className="space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-slate-800">小区闲置市场</h1>
-          <p className="text-sm text-slate-500 mt-1">
-            最后更新: {lastUpdated.toLocaleTimeString()} 
-            {isRefreshing && <span className="ml-2 text-blue-500">刷新中...</span>}
-          </p>
+            <h1 className="text-3xl font-bold text-slate-800">个人闲置市场</h1>
+            <p className="text-slate-600 mt-2">发现小区内的闲置好物，让资源循环利用</p>
         </div>
         <div className="flex gap-2">
           <Button 
@@ -199,10 +199,16 @@ const MarketPage: React.FC = () => {
             刷新
           </Button>
           { auth?.currentUser && (
+                <>
+                  <Button variant="outline" onClick={() => setIsMyItemsOpen(true)} leftIcon={<EyeIcon className="w-4 h-4" />} size="sm">
+                    我的物品
+                  </Button>
               <Button variant="secondary" onClick={() => setIsFormOpen(true)} leftIcon={<PlusCircleIcon className="w-5 h-5" />}>
                   发布闲置
               </Button>
+                </>
           )}
+          </div>
         </div>
       </div>
 
@@ -212,13 +218,28 @@ const MarketPage: React.FC = () => {
         onSubmit={handleAddItem}
       />
       
+      <MyItemsModal
+        isOpen={isMyItemsOpen}
+        onClose={() => setIsMyItemsOpen(false)}
+        onItemDeleted={() => fetchMarketItemsData(true)}
+      />
+      
       <MarketItemDetailModal item={selectedItem} isOpen={!!selectedItem} onClose={handleCloseDetails} />
 
       {marketItems.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl shadow-md">
           <ShoppingBagIcon className="w-16 h-16 mx-auto text-slate-400 mb-4" />
-          <p className="text-xl text-slate-600">市场空空如也～</p>
-          { auth?.currentUser && <p className="text-slate-500">您可以点击右上角的按钮，发布您的第一件闲置物品！</p>}
+          <p className="text-xl text-slate-600">暂无闲置物品～</p>
+          {auth?.currentUser ? (
+            <p className="text-slate-500">您可以点击右上角的按钮，发布您的第一件闲置物品！</p>
+          ) : (
+            <div className="mt-4">
+              <p className="text-slate-500 mb-3">想要发布闲置物品？</p>
+              <Button variant="primary" onClick={() => window.location.href = '/login'}>
+                立即登录
+              </Button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

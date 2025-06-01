@@ -5,7 +5,9 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "tsc && vite build",
+        "build": "node --max-old-space-size=1024 --max-semi-space-size=64 $(which tsc) && node --max-old-space-size=1024 --max-semi-space-size=64 $(which vite) build",
+        "build:safe": "NODE_OPTIONS='--max-old-space-size=1024 --max-semi-space-size=64' npm run build:clean",
+        "build:clean": "tsc && vite build",
         "preview": "vite preview",
         "test": "vitest",
         "test:coverage": "vitest --coverage",

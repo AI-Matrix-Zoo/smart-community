@@ -9,7 +9,23 @@ export interface SuggestionProgressUpdate {
   update: string;
   date: string;
   by: string;
-  byRole?: UserRole;
+  byRole?: string;
+}
+
+export interface SuggestionComment {
+  id: number;
+  suggestionId: string;
+  userId: string;
+  userName: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface SuggestionLike {
+  id: number;
+  suggestionId: string;
+  userId: string;
+  createdAt: string;
 }
 
 export interface Suggestion {
@@ -18,10 +34,14 @@ export interface Suggestion {
   description: string;
   category: string;
   submittedBy: string;
-  submittedByUserId?: string;
+  submittedByUserId: string;
   submittedDate: string;
   status: SuggestionStatus;
   progressUpdates: SuggestionProgressUpdate[];
+  comments?: SuggestionComment[];
+  likes?: SuggestionLike[];
+  likeCount?: number;
+  isLikedByCurrentUser?: boolean;
 }
 
 export interface MarketItem {

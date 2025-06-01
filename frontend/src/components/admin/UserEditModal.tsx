@@ -43,7 +43,7 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, userToEd
     // Basic email validation
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       setFormError('请输入有效的邮箱地址。');
-      return;
+        return;
     }
     
     let finalName = name.trim();

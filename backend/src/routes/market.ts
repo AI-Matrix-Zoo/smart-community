@@ -83,7 +83,7 @@ router.post('/', authenticateToken, (req: AuthenticatedRequest, res: Response): 
   db.run(
     `INSERT INTO market_items (id, title, description, price, category, image_url, seller, seller_user_id, posted_date, contact_info)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [itemId, title, description, price, category, imageUrl, user.name || user.phone, user.userId, new Date().toISOString(), contactInfo],
+    [itemId, title, description, price, category, imageUrl, user.name || user.email || 'Unknown User', user.userId, new Date().toISOString(), contactInfo],
     function(err: any): void {
       if (err) {
         res.status(500).json({
@@ -100,7 +100,7 @@ router.post('/', authenticateToken, (req: AuthenticatedRequest, res: Response): 
         price,
         category,
         imageUrl: imageUrl || '',
-        seller: user.name || user.phone,
+        seller: user.name || user.email || 'Unknown User',
         sellerUserId: user.userId,
         postedDate: new Date().toISOString(),
         contactInfo
@@ -120,87 +120,73 @@ router.get('/my-items', authenticateToken, (req: AuthenticatedRequest, res: Resp
   const user = req.user!;
 
   db.all(
-    'SELECT * FROM market_items WHERE seller_user_id = ? ORDER BY posted_date DESC',
+    `SELECT * FROM market_items WHERE seller_user_id = ? ORDER BY posted_date DESC`,
     [user.userId],
     (err: any, rows: any[]): void => {
       if (err) {
-        res.status(500).json({
-          success: false,
-          message: '获取我的物品失败'
-        });
+        console.error('获取用户物品失败:', err);
+        res.status(500).json({ error: '获取物品失败' });
         return;
       }
 
-      const items = rows.map(row => ({
+      const items: MarketItem[] = rows.map((row: any) => ({
         id: row.id,
         title: row.title,
         description: row.description,
         price: row.price,
         category: row.category,
-        imageUrl: row.image_url,
+        imageUrl: row.image_url || '',
         seller: row.seller,
         sellerUserId: row.seller_user_id,
         postedDate: row.posted_date,
         contactInfo: row.contact_info
       }));
 
-      res.json({
-        success: true,
-        data: items
-      });
+      res.json(items);
     }
   );
 });
 
-// 删除物品（仅限物品发布者）
+// 删除物品
 router.delete('/:id', authenticateToken, (req: AuthenticatedRequest, res: Response): void => {
-  const { id } = req.params;
   const user = req.user!;
+  const itemId = req.params.id;
 
-  // 先检查物品是否属于当前用户
+  // 首先检查物品是否属于当前用户
   db.get(
-    'SELECT seller_user_id FROM market_items WHERE id = ?',
-    [id],
-    (err: any, item: any): void => {
+    `SELECT seller_user_id FROM market_items WHERE id = ?`,
+    [itemId],
+    (err: any, row: any): void => {
       if (err) {
-        res.status(500).json({
-          success: false,
-          message: '服务器错误'
-        });
+        console.error('查询物品失败:', err);
+        res.status(500).json({ error: '删除物品失败' });
         return;
       }
 
-      if (!item) {
-        res.status(404).json({
-          success: false,
-          message: '物品不存在'
-        });
+      if (!row) {
+        res.status(404).json({ error: '物品不存在' });
         return;
       }
 
-      if (item.seller_user_id !== user.userId) {
-        res.status(403).json({
-          success: false,
-          message: '只能删除自己发布的物品'
-        });
+      if (row.seller_user_id !== user.userId) {
+        res.status(403).json({ error: '无权删除此物品' });
         return;
       }
 
       // 删除物品
-      db.run('DELETE FROM market_items WHERE id = ?', [id], function(err: any): void {
+      db.run(
+        `DELETE FROM market_items WHERE id = ?`,
+        [itemId],
+        function(err: any): void {
         if (err) {
-          res.status(500).json({
-            success: false,
-            message: '删除物品失败'
-          });
+            console.error('删除物品失败:', err);
+            res.status(500).json({ error: '删除物品失败' });
           return;
         }
 
-        res.json({
-          success: true,
-          message: '物品删除成功'
-        });
-      });
+          res.json({ success: true, message: '物品删除成功' });
+        }
+      );
     }
   );
 });

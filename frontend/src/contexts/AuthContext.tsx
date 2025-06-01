@@ -23,6 +23,7 @@ interface AuthContextType {
   login: (loginData: LoginRequest) => Promise<{success: boolean; message?: string; user?: User | null}>;
   logout: () => Promise<void>;
   register: (data: RegistrationData) => Promise<{success: boolean; message?: string; user?: User | null}>;
+  updateUser: (user: User) => void;
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
@@ -93,8 +94,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const updateUser = useCallback((user: User) => {
+    setCurrentUser(user);
+    setCurrentUserToStorage(user);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ currentUser, isLoadingAuth, login, logout, register }}>
+    <AuthContext.Provider value={{ currentUser, isLoadingAuth, login, logout, register, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
