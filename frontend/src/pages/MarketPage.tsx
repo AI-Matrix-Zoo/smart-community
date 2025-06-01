@@ -1,27 +1,174 @@
 import React, { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import { MarketItem } from '../types';
-import { getMarketItems, addMarketItem } from '../services/apiService';
-import { Button, LoadingSpinner, Modal, Badge } from '../components/UIElements';
-import { PlusCircleIcon, ShoppingBagIcon, ArrowPathIcon, EyeIcon } from '../components/Icons';
+import { getMarketItems, addMarketItem, addMarketItemComment, toggleMarketItemLike } from '../services/apiService';
+import { Button, LoadingSpinner, Badge, Modal, Textarea } from '../components/UIElements';
+import { PlusCircleIcon, ChevronDownIcon, ChatBubbleLeftEllipsisIcon, ShoppingBagIcon, ArrowPathIcon, HandThumbUpIcon, ChatBubbleLeftIcon } from '../components/Icons';
 import MarketItemForm from '../components/MarketItemForm';
 import MyItemsModal from '../components/MyItemsModal';
-import { AuthContext } from '../contexts/AuthContext';
+import { AuthContext, useAuth } from '../contexts/AuthContext';
 
-const MarketItemCard: React.FC<{ item: MarketItem; onShowDetails: (item: MarketItem) => void; }> = ({ item, onShowDetails }) => {
+const MarketItemCard: React.FC<{ 
+    item: MarketItem; 
+    onAddComment: (id: string, content: string) => void;
+    onToggleLike: (id: string) => void;
+}> = ({ item, onAddComment, onToggleLike }) => {
+  const auth = useContext(AuthContext);
+  const [expanded, setExpanded] = useState(false);
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [commentText, setCommentText] = useState('');
+
+  const handleCommentSubmit = () => {
+    if (!commentText.trim()) {
+      alert("请输入评论内容。");
+      return;
+    }
+    onAddComment(item.id, commentText);
+    setShowCommentModal(false);
+    setCommentText('');
+  };
+
+  const handleLikeClick = () => {
+    if (!auth?.currentUser) {
+      window.location.href = '/login';
+      return;
+    }
+    onToggleLike(item.id);
+  };
+
   return (
-    <div className="bg-white shadow-lg rounded-xl overflow-hidden flex flex-col transition-all duration-300 hover:shadow-2xl hover:scale-105">
-      <img src={item.imageUrl} alt={item.title} className="w-full h-48 object-cover" />
-      <div className="p-5 flex flex-col flex-grow">
-        <h3 className="text-lg font-semibold text-slate-800 mb-2 truncate" title={item.title}>{item.title}</h3>
-        <p className="text-2xl font-bold text-secondary mb-3">¥{item.price.toFixed(2)}</p>
-        <Badge color="slate" className="mb-3 self-start">{item.category}</Badge>
-        <p className="text-sm text-slate-600 flex-grow mb-3 line-clamp-2">{item.description}</p>
-        <p className="text-xs text-slate-500 mb-1">卖家: {item.seller}</p>
-        <p className="text-xs text-slate-500">发布于: {new Date(item.postedDate).toLocaleDateString()}</p>
-        <Button variant="primary" size="sm" onClick={() => onShowDetails(item)} className="mt-4 w-full">
-          查看详情
+    <div className="bg-white shadow-lg rounded-xl p-6 transition-shadow duration-300 hover:shadow-xl">
+      <div className="flex justify-between items-start">
+        <div className="flex-1">
+          <h3 className="text-xl font-semibold text-slate-800 mb-1">{item.title}</h3>
+          <p className="text-sm text-slate-500">由 {item.seller} 于 {new Date(item.postedDate).toLocaleDateString()} 发布</p>
+          <p className="text-sm text-slate-500">类别: {item.category}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-2xl font-bold text-secondary mb-2">¥{item.price.toFixed(2)}</p>
+          <Badge color="slate">{item.category}</Badge>
+        </div>
+      </div>
+      
+      {item.imageUrl && (
+        <div className="mt-4 mb-4">
+          <img src={item.imageUrl} alt={item.title} className="w-full h-48 object-cover rounded-lg shadow-md" />
+        </div>
+      )}
+      
+      <p className="text-slate-700 mt-3 mb-4 whitespace-pre-wrap">{item.description}</p>
+      
+      {item.contactInfo && (
+        <div className="bg-blue-50 p-3 rounded-md mb-4">
+          <p className="text-sm text-slate-700">
+            <span className="font-semibold">联系方式:</span> {item.contactInfo}
+          </p>
+        </div>
+      )}
+      
+      <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
+        <div />
+        <Button 
+            size="sm" 
+            variant="ghost" 
+            onClick={() => setExpanded(!expanded)} 
+            rightIcon={<ChevronDownIcon className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />}
+            className="text-xs"
+        >
+            {expanded ? '收起评论' : '查看评论'} ({item.comments?.length || 0})
         </Button>
       </div>
+
+      {expanded && (
+        <div className="mt-4 pt-4 border-t border-slate-100 space-y-4">
+          {/* 评论区 */}
+          {item.comments && item.comments.length > 0 && (
+            <div>
+              <h4 className="font-medium text-slate-700 mb-2">用户评论</h4>
+              <div className="space-y-2">
+                {item.comments.map((comment) => (
+                  <div key={comment.id} className="bg-blue-50 p-3 rounded-md">
+                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{comment.content}</p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {comment.userName} - {new Date(comment.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {(!item.comments || item.comments.length === 0) && (
+            <p className="text-sm text-slate-500 italic">暂无评论。</p>
+          )}
+        </div>
+      )}
+
+      {/* 点赞和评论统计 */}
+      <div className="flex items-center space-x-4 pt-2 border-t border-slate-100">
+        <button
+          onClick={handleLikeClick}
+          className={`flex items-center space-x-1 px-3 py-1 rounded-md text-sm transition-colors ${
+            item.isLikedByCurrentUser 
+              ? 'bg-red-100 text-red-700 hover:bg-red-200' 
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+          }`}
+        >
+          <HandThumbUpIcon className="w-4 h-4" />
+          <span>{item.likeCount || 0}</span>
+        </button>
+        
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="flex items-center space-x-1 px-3 py-1 rounded-md text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+        >
+          <ChatBubbleLeftIcon className="w-4 h-4" />
+          <span>{item.comments?.length || 0} 评论</span>
+        </button>
+
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="text-sm text-blue-600 hover:text-blue-800"
+        >
+          {expanded ? '收起' : '展开详情'}
+        </button>
+
+        {auth?.currentUser && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCommentModal(true)}
+          >
+            添加评论
+          </Button>
+        )}
+        {!auth?.currentUser && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => window.location.href = '/login'}
+          >
+            登录后评论
+          </Button>
+        )}
+      </div>
+
+      {/* 评论模态框 */}
+      <Modal isOpen={showCommentModal} onClose={() => setShowCommentModal(false)} title="添加评论">
+        <div className="space-y-4">
+          <Textarea 
+            label="评论内容"
+            placeholder="请输入您的评论..."
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+            required
+            rows={3}
+          />
+          <div className="flex justify-end space-x-2">
+            <Button variant="ghost" onClick={() => setShowCommentModal(false)}>取消</Button>
+            <Button onClick={handleCommentSubmit}>发表评论</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
@@ -57,17 +204,17 @@ const MarketItemDetailModal: React.FC<{item: MarketItem | null; isOpen: boolean;
 const MarketPage: React.FC = () => {
   const [marketItems, setMarketItems] = useState<MarketItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDataLoading, setIsDataLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isMyItemsOpen, setIsMyItemsOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MarketItem | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
-  const auth = useContext(AuthContext);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const { currentUser, isLoadingAuth } = useAuth();
   const refreshIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const lastUpdatedRef = useRef<Date>(new Date());
+  const lastUpdatedRef = useRef<Date | null>(null);
 
-  // 更新lastUpdatedRef当lastUpdated改变时
   useEffect(() => {
     lastUpdatedRef.current = lastUpdated;
   }, [lastUpdated]);
@@ -76,7 +223,7 @@ const MarketPage: React.FC = () => {
     if (showRefreshIndicator) {
       setIsRefreshing(true);
     } else {
-      setIsLoading(true);
+      setIsDataLoading(true);
     }
     setError(null);
     try {
@@ -87,32 +234,33 @@ const MarketPage: React.FC = () => {
       setError('获取闲置物品列表失败，请稍后重试。');
       console.error(err);
     } finally {
-      setIsLoading(false);
+      setIsDataLoading(false);
       setIsRefreshing(false);
     }
   }, []);
 
-  // 手动刷新
+  useEffect(() => {
+    if (!isLoadingAuth) {
+      fetchMarketItemsData();
+      setupAutoRefresh();
+    }
+  }, [isLoadingAuth, fetchMarketItemsData]);
+
   const handleManualRefresh = useCallback(() => {
     fetchMarketItemsData(true);
   }, [fetchMarketItemsData]);
 
-  // 设置定期刷新
   const setupAutoRefresh = useCallback(() => {
-    // 清除现有的定时器
     if (refreshIntervalRef.current) {
       clearInterval(refreshIntervalRef.current);
     }
-    
-    // 每30秒自动刷新一次
     refreshIntervalRef.current = setInterval(() => {
       fetchMarketItemsData(true);
     }, 30000);
   }, [fetchMarketItemsData]);
 
-  // 窗口焦点事件处理 - 使用useCallback但不依赖lastUpdated
   const handleWindowFocus = useCallback(() => {
-    // 使用ref来获取最新的lastUpdated值，避免依赖问题
+    if (!lastUpdatedRef.current) return;
     const timeSinceLastUpdate = Date.now() - lastUpdatedRef.current.getTime();
     if (timeSinceLastUpdate > 10000) {
       fetchMarketItemsData(true);
@@ -120,41 +268,66 @@ const MarketPage: React.FC = () => {
   }, [fetchMarketItemsData]);
 
   useEffect(() => {
-    fetchMarketItemsData();
-    setupAutoRefresh();
+    if (!isLoadingAuth) {
+      window.addEventListener('focus', handleWindowFocus);
+      const handleVisibilityChange = () => {
+        if (!document.hidden) {
+          handleWindowFocus();
+        }
+      };
+      document.addEventListener('visibilitychange', handleVisibilityChange);
 
-    // 添加窗口焦点事件监听
-    window.addEventListener('focus', handleWindowFocus);
-    
-    // 添加页面可见性变化监听
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        handleWindowFocus();
-      }
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => {
+        if (refreshIntervalRef.current) {
+          clearInterval(refreshIntervalRef.current);
+        }
+        window.removeEventListener('focus', handleWindowFocus);
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+    }
+  }, [isLoadingAuth, handleWindowFocus, setupAutoRefresh]);
 
-    return () => {
-      // 清理定时器和事件监听
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-      }
-      window.removeEventListener('focus', handleWindowFocus);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, [fetchMarketItemsData, setupAutoRefresh, handleWindowFocus]);
+  useEffect(() => {
+    if (!isLoadingAuth) {
+      setIsLoading(false);
+    }
+  }, [isLoadingAuth]);
 
   const handleAddItem = async (itemData: Omit<MarketItem, 'id' | 'postedDate'>) => {
+    if (!currentUser) {
+      alert("请先登录后再发布物品。");
+      return;
+    }
     try {
       await addMarketItem(itemData);
-      // 立即刷新数据以显示新添加的物品
-      fetchMarketItemsData(true); 
+      fetchMarketItemsData(true);
     } catch (err) {
-       alert('发布物品失败，请重试。');
+      const errorMessage = err instanceof Error ? err.message : '发布物品失败，请重试。';
+      alert(`发布物品失败: ${errorMessage}`);
+      console.error('发布物品详细错误:', err);
+    }
+  };
+
+  const handleAddComment = async (id: string, content: string) => {
+    try {
+      await addMarketItemComment(id, content);
+      fetchMarketItemsData(true);
+    } catch (err) {
+      alert('添加评论失败，请重试。');
       console.error(err);
     }
   };
-  
+
+  const handleToggleLike = async (id: string) => {
+    try {
+      await toggleMarketItemLike(id);
+      fetchMarketItemsData(true);
+    } catch (err) {
+      alert('点赞操作失败，请重试。');
+      console.error(err);
+    }
+  };
+
   const handleShowDetails = (item: MarketItem) => {
     setSelectedItem(item);
   };
@@ -172,12 +345,16 @@ const MarketPage: React.FC = () => {
       <div className="space-y-4">
         <div className="text-center text-red-500 bg-red-100 p-4 rounded-md">{error}</div>
         <div className="text-center">
-          <Button variant="primary" onClick={handleManualRefresh} disabled={isRefreshing}>
-            {isRefreshing ? '重试中...' : '重试'}
+          <Button variant="primary" onClick={handleManualRefresh} disabled={isRefreshing || isDataLoading}>
+            {isRefreshing || isDataLoading ? '重试中...' : '重试'}
           </Button>
         </div>
       </div>
     );
+  }
+
+  if (isDataLoading) {
+    return <div className="flex justify-center items-center h-64"><LoadingSpinner size="lg" /></div>;
   }
 
   return (
@@ -186,27 +363,42 @@ const MarketPage: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
             <h1 className="text-3xl font-bold text-slate-800">个人闲置市场</h1>
-            <p className="text-slate-600 mt-2">发现小区内的闲置好物，让资源循环利用</p>
+            <p className="text-slate-600 mt-2">发布和浏览moma内的闲置物品，让资源得到更好的利用。</p>
+            {lastUpdated && (
+              <p className="text-sm text-slate-500 mt-1">
+                最后更新: {lastUpdated.toLocaleTimeString()} 
+                {isRefreshing && <span className="ml-2 text-blue-500">刷新中...</span>}
+              </p>
+            )}
         </div>
         <div className="flex gap-2">
           <Button 
             variant="outline" 
             onClick={handleManualRefresh} 
-            disabled={isRefreshing}
+            disabled={isRefreshing || isDataLoading}
             leftIcon={<ArrowPathIcon className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
             size="sm"
           >
             刷新
           </Button>
-          { auth?.currentUser && (
+          { currentUser ? (
                 <>
-                  <Button variant="outline" onClick={() => setIsMyItemsOpen(true)} leftIcon={<EyeIcon className="w-4 h-4" />} size="sm">
+                  <Button variant="outline" onClick={() => setIsMyItemsOpen(true)} leftIcon={<ShoppingBagIcon className="w-4 h-4" />} size="sm">
                     我的物品
                   </Button>
               <Button variant="secondary" onClick={() => setIsFormOpen(true)} leftIcon={<PlusCircleIcon className="w-5 h-5" />}>
                   发布闲置
               </Button>
                 </>
+          ) : (
+            <Button 
+              variant="primary" 
+              onClick={() => window.location.href = '/login'}
+              leftIcon={<PlusCircleIcon className="w-4 h-4" />}
+              size="sm"
+            >
+              登录后发布你的闲置
+            </Button>
           )}
           </div>
         </div>
@@ -230,7 +422,7 @@ const MarketPage: React.FC = () => {
         <div className="text-center py-12 bg-white rounded-xl shadow-md">
           <ShoppingBagIcon className="w-16 h-16 mx-auto text-slate-400 mb-4" />
           <p className="text-xl text-slate-600">暂无闲置物品～</p>
-          {auth?.currentUser ? (
+          {currentUser ? (
             <p className="text-slate-500">您可以点击右上角的按钮，发布您的第一件闲置物品！</p>
           ) : (
             <div className="mt-4">
@@ -242,9 +434,14 @@ const MarketPage: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div className="space-y-6">
           {marketItems.map((item) => (
-            <MarketItemCard key={item.id} item={item} onShowDetails={handleShowDetails} />
+            <MarketItemCard 
+              key={item.id} 
+              item={item} 
+              onAddComment={handleAddComment}
+              onToggleLike={handleToggleLike}
+            />
           ))}
         </div>
       )}

@@ -251,8 +251,11 @@ router.post('/verify-code', async (req: Request, res: Response): Promise<void> =
 // 登录
 router.post('/login', async (req: Request, res: Response): Promise<void> => {
   try {
+    console.log('🔐 登录请求:', { body: req.body, headers: req.headers['content-type'] });
+    
     const { error } = loginSchema.validate(req.body);
     if (error) {
+      console.log('❌ 登录验证失败:', error.details[0].message);
       res.status(400).json({
         success: false,
         message: error.details[0].message
@@ -261,9 +264,11 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
     }
 
     const { identifier, password }: LoginRequest = req.body;
+    console.log('🔍 登录尝试:', { identifier, passwordLength: password?.length });
 
     // 验证邮箱格式
     if (!isEmail(identifier)) {
+      console.log('❌ 邮箱格式无效:', identifier);
       res.status(400).json({
         success: false,
         message: '请输入有效的邮箱地址'

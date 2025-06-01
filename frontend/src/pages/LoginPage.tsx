@@ -57,7 +57,7 @@ const LoginPage: React.FC = () => {
         <div>
           <BuildingOfficeIcon className="mx-auto h-16 w-auto text-primary" />
           <h2 className="mt-6 text-center text-3xl font-extrabold text-slate-900">
-            登录智慧小区平台
+            登录智慧moma平台
           </h2>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>

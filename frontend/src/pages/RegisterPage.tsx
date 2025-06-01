@@ -152,7 +152,7 @@ const RegisterPage: React.FC = () => {
         <div>
           <BuildingOfficeIcon className="mx-auto h-16 w-auto text-primary" />
           <h2 className="mt-6 text-center text-3xl font-extrabold text-slate-900">
-            注册智慧小区账户
+            注册智慧moma账户
           </h2>
           <p className="mt-2 text-center text-sm text-slate-600">
             使用邮箱验证注册

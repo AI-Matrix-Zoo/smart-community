@@ -180,6 +180,45 @@ function initializeDatabase() {
     }
   });
 
+  // 创建市场物品评论表
+  db.run(`
+    CREATE TABLE IF NOT EXISTS market_item_comments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      market_item_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      user_name TEXT NOT NULL,
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (market_item_id) REFERENCES market_items (id),
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    )
+  `, (err) => {
+    if (err) {
+      console.error('Error creating market_item_comments table:', err);
+    } else {
+      console.log('Market_item_comments table created/verified successfully');
+    }
+  });
+
+  // 创建市场物品点赞表
+  db.run(`
+    CREATE TABLE IF NOT EXISTS market_item_likes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      market_item_id TEXT NOT NULL,
+      user_id TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(market_item_id, user_id),
+      FOREIGN KEY (market_item_id) REFERENCES market_items (id),
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    )
+  `, (err) => {
+    if (err) {
+      console.error('Error creating market_item_likes table:', err);
+    } else {
+      console.log('Market_item_likes table created/verified successfully');
+    }
+  });
+
   // 创建公告表
   db.run(`
     CREATE TABLE IF NOT EXISTS announcements (
@@ -309,20 +348,20 @@ function insertInitialData() {
       const initialSuggestions = [
         {
           id: 's1',
-          title: '修复1号楼电梯异响',
-          description: '1号楼的电梯最近运行时有奇怪的响声，希望能尽快检查维修。',
+          title: '[演示数据] 修复1号楼电梯异响',
+          description: '1号楼的电梯最近运行时有奇怪的响声，希望能尽快检查维修。\n\n注：这是演示数据，仅用于功能展示。',
           category: '公共维修',
-          submittedBy: '张三 (1栋-101)',
+          submittedBy: '张三 (1栋-1单元-101)',
           submittedByUserId: 'user1',
           submittedDate: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
           status: SuggestionStatus.Submitted
         },
         {
           id: 's2',
-          title: '增加小区内宠物活动区域',
-          description: '建议在小区花园旁开辟一小块区域供宠物活动，并设置相关设施。',
+          title: '[演示数据] 增加小区内宠物活动区域',
+          description: '建议在小区花园旁开辟一小块区域供宠物活动，并设置相关设施。\n\n注：这是演示数据，仅用于功能展示。',
           category: '环境绿化',
-          submittedBy: '李四 (2栋-202)',
+          submittedBy: '李四 (2栋-2单元-202)',
           submittedByUserId: 'user2',
           submittedDate: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
           status: SuggestionStatus.InProgress
@@ -352,19 +391,19 @@ function insertInitialData() {
       // 插入建议进度更新
       db.run(`
         INSERT INTO suggestion_progress (suggestion_id, update_text, date, by_user, by_role)
-        VALUES ('s2', '物业已收到建议，正在评估可行性。', ?, '物业系统', 'PROPERTY')
+        VALUES ('s2', '物业已收到建议，正在评估可行性。（演示数据）', ?, '物业系统', 'PROPERTY')
       `, [new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()]);
 
       // 插入初始市场物品
       db.run(`
         INSERT INTO market_items (id, title, description, price, category, image_url, seller, posted_date, contact_info)
-        VALUES ('m1', '九成新婴儿床', '宝宝长大了用不上了，实木婴儿床，几乎全新，带床垫。', 300, '母婴用品', 'https://picsum.photos/seed/m1/400/300', '业主赵 (非特定用户)', ?, '微信: zhaoliu123')
+        VALUES ('m1', '[演示数据] 九成新婴儿床', '宝宝长大了用不上了，实木婴儿床，几乎全新，带床垫。\n\n注：这是演示数据，仅用于功能展示，请勿联系。', 300, '母婴用品', 'https://picsum.photos/seed/m1/400/300', '业主赵 (演示用户)', ?, '微信: demo123（演示联系方式）')
       `, [new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()]);
 
       // 插入初始公告
       db.run(`
         INSERT INTO announcements (id, content, author_id, author_name, role_of_author)
-        VALUES ('anno1', '近期将组织小区消防演练，请各位业主关注后续通知，积极参与。', 'admin1', '管理员小赵', 'ADMIN')
+        VALUES ('anno1', '[演示公告] 近期将组织小区消防演练，请各位业主关注后续通知，积极参与。\n\n注：这是演示数据，仅用于功能展示。', 'admin1', '管理员小赵', 'ADMIN')
       `);
 
       console.log('Initial data inserted successfully');

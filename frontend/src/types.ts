@@ -44,6 +44,22 @@ export interface Suggestion {
   isLikedByCurrentUser?: boolean;
 }
 
+export interface MarketItemComment {
+  id: number;
+  marketItemId: string;
+  userId: string;
+  userName: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface MarketItemLike {
+  id: number;
+  marketItemId: string;
+  userId: string;
+  createdAt: string;
+}
+
 export interface MarketItem {
   id: string;
   title: string;
@@ -55,6 +71,10 @@ export interface MarketItem {
   sellerUserId?: string;
   postedDate: string;
   contactInfo?: string;
+  comments?: MarketItemComment[];
+  likes?: MarketItemLike[];
+  likeCount?: number;
+  isLikedByCurrentUser?: boolean;
 }
 
 export type NavItem = {

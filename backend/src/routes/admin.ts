@@ -150,8 +150,12 @@ router.delete('/users/:id', authenticateToken, requireAdmin, (req: Authenticated
 });
 
 // 删除市场物品（管理员）
-router.delete('/market-items/:id', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response): void => {
+router.delete('/market/:id', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response): void => {
   const { id } = req.params;
+
+  // 删除相关的评论和点赞
+  db.run('DELETE FROM market_item_comments WHERE market_item_id = ?', [id]);
+  db.run('DELETE FROM market_item_likes WHERE market_item_id = ?', [id]);
 
   db.run('DELETE FROM market_items WHERE id = ?', [id], function(err: any): void {
     if (err) {

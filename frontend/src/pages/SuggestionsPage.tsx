@@ -273,12 +273,6 @@ const SuggestionsPage: React.FC = () => {
   }, [lastUpdated]);
 
   const fetchSuggestionsData = useCallback(async (showRefreshIndicator = false) => {
-    if (!currentUser) {
-      setIsDataLoading(false);
-      setIsRefreshing(false);
-      return;
-    }
-
     if (showRefreshIndicator) {
       setIsRefreshing(true);
     } else {
@@ -290,17 +284,13 @@ const SuggestionsPage: React.FC = () => {
       setSuggestions(data);
       setLastUpdated(new Date());
     } catch (err) {
-      if (err instanceof Error && err.message.includes('401')) {
-        setError('您的登录已过期或无效，请重新登录后查看建议。');
-      } else {
-        setError('获取建议列表失败，请稍后重试。');
-      }
+      setError('获取建议列表失败，请稍后重试。');
       console.error(err);
     } finally {
       setIsDataLoading(false);
       setIsRefreshing(false);
     }
-  }, [currentUser]);
+  }, []);
 
   useEffect(() => {
     if (!isLoadingAuth) {
@@ -437,6 +427,7 @@ const SuggestionsPage: React.FC = () => {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold text-slate-800">个人物业建议与反馈</h1>
+          <p className="text-slate-600 mt-2">对moma管理、设施有任何建议或问题？请在这里提出，物业将及时跟进处理，并公示进度。</p>
           {lastUpdated && (
             <p className="text-sm text-slate-500 mt-1">
               最后更新: {lastUpdated.toLocaleTimeString()} 

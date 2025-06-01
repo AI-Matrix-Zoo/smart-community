@@ -24,6 +24,31 @@ export const authenticateToken = (req: AuthenticatedRequest, res: Response, next
   });
 };
 
+// 可选的身份验证中间件 - 如果有token则验证，没有则继续
+export const optionalAuth = (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+
+  if (!token) {
+    // 没有token，继续处理但不设置用户信息
+    next();
+    return;
+  }
+
+  const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key';
+
+  jwt.verify(token, jwtSecret, (err: any, decoded: any) => {
+    if (err) {
+      // token无效，继续处理但不设置用户信息
+      next();
+      return;
+    }
+
+    req.user = decoded as JwtPayload;
+    next();
+  });
+};
+
 export const requireRole = (roles: UserRole[]) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {

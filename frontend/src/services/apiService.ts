@@ -201,8 +201,31 @@ export const deleteMarketItem = async (itemId: string): Promise<boolean> => {
     });
     return true;
   } catch (error) {
-    console.error('删除物品失败:', error);
-    return false;
+    console.error('删除市场物品失败:', error);
+    throw error;
+  }
+};
+
+export const addMarketItemComment = async (itemId: string, content: string): Promise<any> => {
+  try {
+    return await apiRequest(`/market/${itemId}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ content }),
+    });
+  } catch (error) {
+    console.error('添加市场物品评论失败:', error);
+    throw error;
+  }
+};
+
+export const toggleMarketItemLike = async (itemId: string): Promise<{ isLiked: boolean }> => {
+  try {
+    return await apiRequest(`/market/${itemId}/like`, {
+      method: 'POST',
+    });
+  } catch (error) {
+    console.error('市场物品点赞操作失败:', error);
+    throw error;
   }
 };
 

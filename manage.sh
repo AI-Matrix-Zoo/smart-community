@@ -129,30 +129,32 @@ EOF
     log_success "项目初始化完成！"
 }
 
+# 检查并释放端口
+free_port() {
+    local port=$1
+    local pids=""
+    if command -v lsof &>/dev/null; then
+        pids=$(lsof -ti tcp:$port)
+    elif command -v netstat &>/dev/null; then
+        pids=$(netstat -tlnp 2>/dev/null | grep :$port | awk '{print $7}' | cut -d'/' -f1)
+    fi
+    if [ -n "$pids" ]; then
+        echo -e "${YELLOW}[WARNING] 端口 $port 被占用，自动释放...${NC}"
+        for pid in $pids; do
+            if [ "$pid" != "-" ]; then
+                kill -9 $pid 2>/dev/null && echo -e "${GREEN}[SUCCESS] 已终止进程 $pid (端口:$port)${NC}"
+            fi
+        done
+        sleep 1
+    fi
+}
+
 # 开发模式
 dev_mode() {
     log_header "启动开发环境"
-    
-    # 检查端口占用
-    check_port() {
-        local port=$1
-        if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null 2>&1; then
-            log_warning "端口 $port 已被占用"
-            return 1
-        fi
-        return 0
-    }
-    
-    # 检查前后端端口
-    if ! check_port 3000; then
-        log_error "后端端口 3000 被占用，请先关闭占用进程"
-        exit 1
-    fi
-    
-    if ! check_port 5173; then
-        log_error "前端端口 5173 被占用，请先关闭占用进程"
-        exit 1
-    fi
+    # 启动前自动释放端口
+    free_port 3000
+    free_port 5173
     
     log_info "启动后端服务..."
     cd $BACKEND_DIR
@@ -210,21 +212,55 @@ build_project() {
 # 生产部署
 deploy_production() {
     log_header "生产环境部署"
-    
+    # 启动前自动释放端口
+    free_port 3000
+
     # 构建项目
     build_project
+
+    # 修复权限，确保Nginx可以访问文件
+    log_info "修复文件权限..."
+    chmod 755 /root 2>/dev/null || true
+    chmod -R 755 /root/smart-community/frontend/dist 2>/dev/null || true
+    log_success "文件权限已修复"
+
+    # Nginx现在直接指向项目构建目录，无需复制文件
+    log_info "Nginx配置已指向项目构建目录: /root/smart-community/frontend/dist"
     
-    # 启动生产服务
+    # 重载Nginx配置
+    if command -v nginx &>/dev/null; then
+        sudo nginx -t && sudo nginx -s reload && log_success "Nginx 配置已重载"
+    else
+        log_warning "未检测到 nginx 命令，请手动重载Nginx配置"
+    fi
+
+    # 创建logs目录
+    mkdir -p logs
+    
+    # 停止现有的生产服务
+    if [ -f ".production.pid" ]; then
+        OLD_PID=$(cat .production.pid)
+        if kill -0 $OLD_PID 2>/dev/null; then
+            kill $OLD_PID
+            sleep 2
+        fi
+        rm -f .production.pid
+    fi
+
+    # 启动生产服务，日志输出到logs文件夹
     log_info "启动生产环境后端服务..."
     cd $BACKEND_DIR
-    NODE_ENV=production npm start &
+    LOG_FILE="../logs/backend-$(date +%Y%m%d-%H%M%S).log"
+    nohup env NODE_ENV=production node dist/index.js > "$LOG_FILE" 2>&1 &
     PROD_PID=$!
     cd ..
-    
+
     log_success "生产环境部署完成！"
     log_info "服务PID: $PROD_PID"
-    log_info "服务地址: http://localhost:3000"
-    
+    log_info "前端地址: http://123.56.64.5"
+    log_info "后端地址: http://localhost:3000"
+    log_info "日志文件: $LOG_FILE"
+
     # 保存PID到文件
     echo $PROD_PID > .production.pid
     log_info "PID已保存到 .production.pid"

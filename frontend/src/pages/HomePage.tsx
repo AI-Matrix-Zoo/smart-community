@@ -79,7 +79,7 @@ const HomePage: React.FC = () => {
     <div className="space-y-12">
       <header className="bg-gradient-to-r from-primary to-secondary text-white p-10 rounded-xl shadow-xl text-center">
         <h1 className="text-5xl font-bold mb-4">欢迎来到智慧moma</h1>
-        <p className="text-xl text-sky-100 mb-4">您的便捷小区生活服务平台。</p>
+        <p className="text-xl text-sky-100 mb-4">您的便捷moma生活服务平台。</p>
         {!auth?.currentUser && (
           <div className="mt-6">
             <p className="text-lg text-sky-100 mb-4">游客您好！登录后可享受更多服务</p>
@@ -96,13 +96,13 @@ const HomePage: React.FC = () => {
       </header>
 
       <section className="grid md:grid-cols-2 gap-8">
-        <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300">
+        <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300 flex flex-col">
           <div className="flex items-center text-primary mb-4">
             <LightbulbIcon className="w-12 h-12 mr-4" />
             <h2 className="text-3xl font-semibold">个人物业建议</h2>
           </div>
-          <p className="text-slate-600 mb-6">
-            对小区管理、设施有任何建议或问题？请在这里提出，物业将及时跟进处理，并公示进度。
+          <p className="text-slate-600 mb-6 flex-grow">
+            对moma管理、设施有任何建议或问题？请在这里提出，物业将及时跟进处理，并公示进度。
           </p>
           <Link to="/suggestions">
             <Button variant="primary" size="lg" className="w-full">
@@ -111,14 +111,16 @@ const HomePage: React.FC = () => {
           </Link>
         </div>
 
-        <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-shadow">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <ShoppingBagIcon className="w-8 h-8 text-green-600" />
+        <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-2xl transition-shadow duration-300 flex flex-col">
+          <div className="flex items-center text-secondary mb-4">
+            <ShoppingBagIcon className="w-12 h-12 mr-4" />
+            <h2 className="text-3xl font-semibold">个人闲置市场</h2>
           </div>
-          <h3 className="text-xl font-semibold text-gray-800 mb-3">个人闲置市场</h3>
-          <p className="text-gray-600 mb-4">发布和浏览小区内的闲置物品，让资源得到更好的利用。</p>
+          <p className="text-slate-600 mb-6 flex-grow">
+            发布和浏览moma内的闲置物品，让资源得到更好的利用。
+          </p>
           <Link to="/market">
-            <Button variant="outline" className="w-full">
+            <Button variant="primary" size="lg" className="w-full">
               查看闲置
             </Button>
           </Link>
