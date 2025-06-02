@@ -104,9 +104,11 @@ const UserManagementTab: React.FC = () => {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">ID</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">姓名</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">邮箱</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">联系方式</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">角色</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">楼栋/房号</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">楼栋</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">单元</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">房号</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
             </tr>
           </thead>
@@ -115,12 +117,20 @@ const UserManagementTab: React.FC = () => {
               <tr key={user.id} className="hover:bg-slate-50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 truncate max-w-xs">{user.id}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{user.name}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{user.email}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                  {user.email || user.phone || 'N/A'}
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <Badge color={getRoleBadgeColor(user.role)}>{user.role}</Badge>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                  {user.building && user.unit && user.room ? `${user.building}-${user.unit}-${user.room}` : 'N/A'}
+                  {user.building || 'N/A'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                  {user.unit || 'N/A'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                  {user.room || 'N/A'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                   <Button variant="ghost" size="sm" onClick={() => handleEditUser(user)} aria-label="编辑用户">

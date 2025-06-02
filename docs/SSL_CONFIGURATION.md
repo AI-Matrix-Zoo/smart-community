@@ -2,21 +2,22 @@
 
 ## 📋 配置概述
 
-智慧moma生活平台已成功配置HTTPS支持，提供安全的加密连接。
+智慧moma生活平台当前配置为HTTP访问模式，已准备好SSL证书支持，可随时升级到HTTPS。
 
 ## 🌐 访问地址
 
-- **HTTPS地址**: https://www.moma.lol
-- **HTTP地址**: http://www.moma.lol (自动重定向到HTTPS)
+- **HTTP地址**: http://www.moma.lol
+- **备用地址**: http://moma.lol
+- **HTTPS地址**: 暂时禁用（可随时启用）
 
 ## 🔐 SSL证书信息
 
-### 当前配置
-- **证书类型**: 自签名证书（用于测试）
+### 当前状态
+- **访问模式**: HTTP（无SSL警告）
+- **证书准备**: 自签名证书已生成
 - **证书位置**: `/etc/nginx/ssl/smart-community.crt`
 - **私钥位置**: `/etc/nginx/ssl/smart-community.key`
-- **有效期**: 365天
-- **加密算法**: RSA 2048位
+- **ACME支持**: 已配置Let's Encrypt验证路径
 
 ### 证书详情
 ```
@@ -26,7 +27,23 @@ Valid from: 2025-06-01
 Valid to: 2026-06-01
 ```
 
-## 🛡️ 安全配置
+## 🌐 当前访问模式：HTTP
+
+### 优势
+- ✅ 无浏览器SSL警告
+- ✅ 访问速度快
+- ✅ 配置简单
+- ✅ 兼容性好
+
+### 适用场景
+- 内网环境
+- 开发测试
+- 演示展示
+- 对安全要求不高的应用
+
+## 🛡️ SSL准备就绪
+
+虽然当前使用HTTP，但SSL证书和配置已准备完毕：
 
 ### SSL协议
 - 支持 TLS 1.2 和 TLS 1.3
@@ -46,18 +63,98 @@ ECDHE-RSA-AES256-SHA384
 - `X-Content-Type-Options`: 防止MIME类型嗅探
 - `X-XSS-Protection`: XSS保护
 
-## 🔄 HTTP到HTTPS重定向
+## 🔄 快速启用HTTPS
 
-所有HTTP请求会自动重定向到HTTPS，确保所有通信都是加密的。
+如需启用HTTPS，只需几个简单步骤：
 
-## ⚠️ 浏览器警告
+### 方法1：启用自签名证书HTTPS
 
-由于使用的是自签名证书，浏览器会显示安全警告。这是正常现象，可以选择"继续访问"。
+```bash
+# 备份当前HTTP配置
+cp /etc/nginx/conf.d/smart-community.conf /etc/nginx/conf.d/smart-community-http-backup.conf
 
-### 解决方案
-1. **生产环境推荐**: 使用Let's Encrypt免费证书
-2. **企业环境**: 购买商业SSL证书
-3. **开发测试**: 在浏览器中添加证书例外
+# 创建HTTPS配置
+cat > /etc/nginx/conf.d/smart-community.conf << 'EOF'
+# HTTP重定向
+server {
+    listen 80;
+    server_name www.moma.lol moma.lol;
+    
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+        try_files $uri =404;
+    }
+    
+    location / {
+        return 301 https://$server_name$request_uri;
+    }
+}
+
+# HTTPS服务器
+server {
+    listen 443 ssl http2;
+    server_name www.moma.lol moma.lol;
+    
+    ssl_certificate /etc/nginx/ssl/smart-community.crt;
+    ssl_certificate_key /etc/nginx/ssl/smart-community.key;
+    
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-RSA-AES128-GCM-SHA256:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers on;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 10m;
+    
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    add_header X-Frame-Options DENY always;
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    
+    client_max_body_size 50M;
+    
+    location / {
+        root /root/smart-community/frontend/dist;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+        
+        location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg)$ {
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+        }
+    }
+    
+    location /api/ {
+        proxy_pass http://127.0.0.1:3000/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_Set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_connect_timeout 60s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+    
+    location /health {
+        proxy_pass http://127.0.0.1:3000/health;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_Set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_Set_header X-Forwarded-Proto $scheme;
+    }
+}
+EOF
+
+# 重新加载配置
+nginx -t && systemctl reload nginx
+```
+
+### 方法2：获取Let's Encrypt正式证书
+
+参考 `docs/SSL_CROSS_SERVER_GUIDE.md` 中的跨服务器获取方法。
 
 ## 🔄 自动续期配置
 
@@ -73,37 +170,6 @@ ECDHE-RSA-AES256-SHA384
 ### 续期日志
 续期日志保存在：`/var/log/ssl-renewal.log`
 
-## 🚀 升级到正式SSL证书
-
-### 使用Let's Encrypt（推荐）
-
-1. **域名已配置**: www.moma.lol 和 moma.lol
-2. **DNS解析**: 已正确指向服务器IP 123.56.64.5
-3. **ACME挑战**: 已配置支持 `/.well-known/acme-challenge/`
-
-**手动申请证书**:
-```bash
-# 停止nginx
-systemctl stop nginx
-
-# 申请证书
-certbot certonly --standalone -d www.moma.lol -d moma.lol --non-interactive --agree-tos --email admin@moma.lol
-
-# 复制证书到nginx目录
-cp /etc/letsencrypt/live/www.moma.lol/fullchain.pem /etc/nginx/ssl/smart-community.crt
-cp /etc/letsencrypt/live/www.moma.lol/privkey.pem /etc/nginx/ssl/smart-community.key
-
-# 重启nginx
-systemctl start nginx
-```
-
-### 使用商业证书
-
-1. 生成CSR（证书签名请求）
-2. 向CA机构申请证书
-3. 下载证书文件
-4. 更新nginx配置
-
 ## 🔧 配置文件位置
 
 - **Nginx配置**: `/etc/nginx/conf.d/smart-community.conf`
@@ -112,36 +178,44 @@ systemctl start nginx
 - **配置备份**: `/etc/nginx/conf.d/smart-community.conf.backup`
 - **续期脚本**: `/root/renew-ssl.sh`
 
-## 📊 SSL测试
+## 📊 测试方法
 
-### 本地测试
+### HTTP测试
 ```bash
-# 测试HTTPS连接
-curl -k -I https://www.moma.lol
+# 测试HTTP连接
+curl -I http://www.moma.lol
 
+# 测试API接口
+curl http://www.moma.lol/api/health
+
+# 检查响应时间
+time curl -s http://www.moma.lol > /dev/null
+```
+
+### SSL准备测试
+```bash
 # 查看证书信息
 openssl x509 -in /etc/nginx/ssl/smart-community.crt -text -noout
 
-# 测试SSL配置
-openssl s_client -connect www.moma.lol:443 -servername www.moma.lol
-
 # 检查证书到期时间
 openssl x509 -in /etc/nginx/ssl/smart-community.crt -noout -dates
-```
 
-### 在线测试
-- SSL Labs: https://www.ssllabs.com/ssltest/
-- SSL Checker: https://www.sslshopper.com/ssl-checker.html
+# 测试SSL配置（如果启用HTTPS）
+openssl s_client -connect www.moma.lol:443 -servername www.moma.lol
+```
 
 ## 🔄 维护操作
 
-### 手动续期检查
+### 切换到HTTPS模式
 ```bash
-# 执行续期脚本
-/root/renew-ssl.sh
+# 使用上面的方法1配置
+```
 
-# 查看续期日志
-tail -f /var/log/ssl-renewal.log
+### 切换回HTTP模式
+```bash
+# 恢复HTTP配置
+cp /etc/nginx/conf.d/smart-community-http-backup.conf /etc/nginx/conf.d/smart-community.conf
+nginx -t && systemctl reload nginx
 ```
 
 ### 重新生成自签名证书
@@ -152,39 +226,35 @@ openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
   -subj "/C=CN/ST=Beijing/L=Beijing/O=Smart Community/OU=IT Department/CN=www.moma.lol"
 ```
 
-### 重新加载nginx配置
-```bash
-nginx -t && systemctl reload nginx
-```
-
 ## 📝 注意事项
 
-1. **自签名证书限制**
-   - 浏览器会显示安全警告
-   - 不被公共CA信任
-   - 仅适用于测试和内部使用
+1. **HTTP模式特点**
+   - 数据传输未加密
+   - 适合内网或测试环境
+   - 无浏览器安全警告
+   - 访问速度较快
 
-2. **生产环境建议**
-   - 使用Let's Encrypt免费证书
-   - 配置自动续期
-   - 定期检查证书状态
+2. **安全建议**
+   - 生产环境建议使用HTTPS
+   - 敏感数据传输需要加密
+   - 定期评估安全需求
 
-3. **安全最佳实践**
-   - 定期更新SSL证书
-   - 使用强加密算法
-   - 启用HSTS
-   - 定期安全审计
+3. **升级策略**
+   - 可随时切换到HTTPS
+   - SSL证书已准备就绪
+   - 支持Let's Encrypt正式证书
 
-## 🎯 下一步
+## 🎯 当前状态
 
-1. ✅ 域名配置完成
-2. ✅ 自动续期已配置
-3. 🔄 可尝试申请Let's Encrypt正式证书
-4. 📊 定期监控证书状态
+1. ✅ HTTP访问正常
+2. ✅ 域名配置完成
+3. ✅ SSL证书已准备
+4. ✅ 自动续期已配置
+5. 🔄 可随时启用HTTPS
 
 ---
 
 **配置完成时间**: 2025-06-01  
-**配置状态**: ✅ 已启用HTTPS  
-**访问地址**: https://www.moma.lol  
-**自动续期**: ✅ 已配置 
+**当前状态**: ✅ HTTP访问模式  
+**访问地址**: http://www.moma.lol  
+**SSL准备**: ✅ 随时可启用

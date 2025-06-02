@@ -114,15 +114,14 @@ export const loginUser = async (identifier: string, password: string): Promise<{
 };
 
 export interface RegistrationData {
-  phone?: string;
-  email?: string;
+  identifier: string; // 邮箱或手机号
   password: string;
   name: string;
   building: string;
   unit: string;
   room: string;
   verificationCode: string;
-  verificationType: 'phone' | 'email';
+  verificationType: 'email' | 'sms';
 }
 
 export const registerUser = async (data: RegistrationData): Promise<{ success: boolean; message?: string; user?: User }> => {

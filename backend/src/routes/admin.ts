@@ -12,13 +12,14 @@ const updateUserSchema = Joi.object({
   phone: Joi.string().pattern(/^1[3-9]\d{9}$/).optional(),
   role: Joi.string().valid(...Object.values(UserRole)).optional(),
   building: Joi.string().optional(),
+  unit: Joi.string().optional(),
   room: Joi.string().optional()
 });
 
 // 获取所有用户（管理员）
 router.get('/users', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response): void => {
   db.all(
-    'SELECT id, phone, name, role, building, room, created_at, updated_at FROM users ORDER BY created_at DESC',
+    'SELECT id, phone, email, name, role, building, unit, room, created_at, updated_at FROM users ORDER BY created_at DESC',
     [],
     (err: any, rows: any[]): void => {
       if (err) {
@@ -32,9 +33,11 @@ router.get('/users', authenticateToken, requireAdmin, (req: AuthenticatedRequest
       const users = rows.map(row => ({
         id: row.id,
         phone: row.phone,
+        email: row.email,
         name: row.name,
         role: row.role,
         building: row.building,
+        unit: row.unit,
         room: row.room,
         createdAt: row.created_at,
         updatedAt: row.updated_at

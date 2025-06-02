@@ -115,25 +115,25 @@ export interface LoginRequest {
 }
 
 export interface RegisterRequest {
-  email: string;
+  identifier: string; // 可以是邮箱或手机号
   password: string;
   name: string;
   building: string;
   unit: string;
   room: string;
   verificationCode: string;
-  verificationType: 'email';
+  verificationType: 'email' | 'sms';
 }
 
 export interface SendVerificationCodeRequest {
-  identifier: string; // 邮箱
-  type: 'email';
+  identifier: string; // 邮箱或手机号
+  type: 'email' | 'sms';
 }
 
 export interface VerifyCodeRequest {
   identifier: string;
   code: string;
-  type: 'email';
+  type: 'email' | 'sms';
 }
 
 export interface ApiResponse<T = any> {

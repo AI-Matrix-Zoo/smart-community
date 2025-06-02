@@ -59,6 +59,13 @@ const LoginPage: React.FC = () => {
           <h2 className="mt-6 text-center text-3xl font-extrabold text-slate-900">
             登录智慧moma平台
           </h2>
+          
+          {/* 手机号登录提示 */}
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <p className="text-sm text-amber-700 text-center">
+              📧 <strong>温馨提示：</strong>手机号登录功能暂时不可用，请使用邮箱登录
+            </p>
+          </div>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <Input

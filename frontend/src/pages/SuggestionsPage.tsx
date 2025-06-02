@@ -162,30 +162,30 @@ const SuggestionItem: React.FC<{
       )}
 
       {/* 点赞和评论统计 */}
-      <div className="flex items-center space-x-4 pt-2 border-t border-slate-100">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4 pt-3 border-t border-slate-100">
         <button
           onClick={handleLikeClick}
-          className={`flex items-center space-x-1 px-3 py-1 rounded-md text-sm transition-colors ${
+          className={`flex items-center space-x-1 px-2 sm:px-3 py-1 rounded-md text-xs sm:text-sm transition-colors ${
             suggestion.isLikedByCurrentUser 
               ? 'bg-red-100 text-red-700 hover:bg-red-200' 
               : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
           }`}
         >
-          <HandThumbUpIcon className="w-4 h-4" />
+          <HandThumbUpIcon className="w-3 h-3 sm:w-4 sm:h-4" />
           <span>{suggestion.likeCount || 0}</span>
         </button>
         
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center space-x-1 px-3 py-1 rounded-md text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
+          className="flex items-center space-x-1 px-2 sm:px-3 py-1 rounded-md text-xs sm:text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
         >
-          <ChatBubbleLeftIcon className="w-4 h-4" />
+          <ChatBubbleLeftIcon className="w-3 h-3 sm:w-4 sm:h-4" />
           <span>{suggestion.comments?.length || 0} 评论</span>
         </button>
 
         <button
           onClick={() => setExpanded(!expanded)}
-          className="text-sm text-blue-600 hover:text-blue-800"
+          className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 px-1"
         >
           {expanded ? '收起' : '展开详情'}
         </button>
@@ -195,6 +195,7 @@ const SuggestionItem: React.FC<{
             variant="outline"
             size="sm"
             onClick={() => setShowCommentModal(true)}
+            className="text-xs sm:text-sm px-2 sm:px-3 py-1"
           >
             添加评论
           </Button>
@@ -204,6 +205,7 @@ const SuggestionItem: React.FC<{
             variant="outline"
             size="sm"
             onClick={() => window.location.href = '/login'}
+            className="text-xs sm:text-sm px-2 sm:px-3 py-1"
           >
             登录后评论
           </Button>
@@ -423,46 +425,39 @@ const SuggestionsPage: React.FC = () => {
   }
 
   return (
-    <div className="space-y-8">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-800">个人物业建议与反馈</h1>
-          <p className="text-slate-600 mt-2">对moma管理、设施有任何建议或问题？请在这里提出，物业将及时跟进处理，并公示进度。</p>
+    <div className="space-y-6 sm:space-y-8">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+        <div className="flex-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">个人物业建议与反馈</h1>
+          <p className="text-slate-600 mt-2 text-sm sm:text-base">对moma管理、设施有任何建议或问题？请在这里提出，物业将及时跟进处理，并公示进度。</p>
           {lastUpdated && (
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-xs sm:text-sm text-slate-500 mt-1">
               最后更新: {lastUpdated.toLocaleTimeString()} 
               {isRefreshing && <span className="ml-2 text-blue-500">刷新中...</span>}
             </p>
           )}
         </div>
         {currentUser && (
-          <div className="flex gap-2">
+          <div className="flex justify-end">
             <Button 
-              variant="outline" 
-              onClick={handleManualRefresh} 
-              disabled={isRefreshing || isDataLoading}
-              leftIcon={<ArrowPathIcon className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
+              variant="secondary" 
+              onClick={() => setIsFormOpen(true)} 
+              leftIcon={<PlusCircleIcon className="w-4 h-4" />}
               size="sm"
+              className="text-sm"
             >
-              刷新
-            </Button>
-            <Button variant="secondary" onClick={() => setIsFormOpen(true)} leftIcon={<PlusCircleIcon className="w-5 h-5" />}>
-                我有建议
+              我有建议
             </Button>
           </div>
         )}
         {!currentUser && (
-          <div className="flex gap-2">
+          <div className="flex justify-end">
             <Button 
-              variant="outline" 
-              onClick={handleManualRefresh} 
-              disabled={isRefreshing || isDataLoading}
-              leftIcon={<ArrowPathIcon className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />}
+              variant="primary" 
+              onClick={() => window.location.href = '/login'}
               size="sm"
+              className="text-sm"
             >
-              刷新
-            </Button>
-            <Button variant="primary" onClick={() => window.location.href = '/login'}>
               登录后提交建议
             </Button>
           </div>

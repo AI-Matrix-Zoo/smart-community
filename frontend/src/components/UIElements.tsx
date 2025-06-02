@@ -9,7 +9,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export const Button: React.FC<ButtonProps> = ({ variant = 'primary', size = 'md', leftIcon, rightIcon, className, children, ...props }) => {
-  const baseStyles = 'font-semibold rounded-lg shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-150 ease-in-out inline-flex items-center justify-center';
+  const baseStyles = 'font-medium rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors duration-150 ease-in-out inline-flex items-center justify-center';
   
   const variantStyles = {
     primary: 'bg-primary text-white hover:bg-primary-dark focus:ring-primary',
@@ -20,9 +20,9 @@ export const Button: React.FC<ButtonProps> = ({ variant = 'primary', size = 'md'
   };
 
   const sizeStyles = {
-    sm: 'px-3 py-1.5 text-sm',
-    md: 'px-4 py-2 text-base',
-    lg: 'px-6 py-3 text-lg',
+    sm: 'px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm',
+    md: 'px-3 sm:px-4 py-1.5 sm:py-2 text-sm sm:text-base',
+    lg: 'px-4 sm:px-6 py-2 sm:py-3 text-base sm:text-lg',
   };
 
   return (
@@ -30,9 +30,9 @@ export const Button: React.FC<ButtonProps> = ({ variant = 'primary', size = 'md'
       className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className}`}
       {...props}
     >
-      {leftIcon && <span className="mr-2">{leftIcon}</span>}
+      {leftIcon && <span className="mr-1 sm:mr-2">{leftIcon}</span>}
       {children}
-      {rightIcon && <span className="ml-2">{rightIcon}</span>}
+      {rightIcon && <span className="ml-1 sm:ml-2">{rightIcon}</span>}
     </button>
   );
 };

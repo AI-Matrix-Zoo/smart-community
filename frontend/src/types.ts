@@ -103,14 +103,14 @@ export interface User {
 }
 
 export interface RegistrationData {
-  email: string;
+  identifier: string; // 邮箱或手机号
   password: string;
   name: string;
   building: string;
   unit: string;
   room: string;
   verificationCode: string;
-  verificationType: 'email';
+  verificationType: 'email' | 'sms';
 }
 
 export interface Announcement {
