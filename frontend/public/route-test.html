@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>路由测试 - 智慧小区</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8fafc;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #1e293b;
+            margin-bottom: 20px;
+        }
+        
+        .test-link {
+            display: inline-block;
+            padding: 10px 20px;
+            margin: 10px;
+            background-color: #3b82f6;
+            color: white;
+            text-decoration: none;
+            border-radius: 6px;
+            transition: background-color 0.2s;
+        }
+        
+        .test-link:hover {
+            background-color: #2563eb;
+        }
+        
+        .info {
+            background-color: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 20px 0;
+        }
+        
+        .success {
+            background-color: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            color: #166534;
+        }
+        
+        .error {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🧪 SPA路由测试页面</h1>
+
+        <div class="info">
+            <h3>测试说明</h3>
+            <p>此页面用于测试单页应用(SPA)路由重定向是否正常工作。</p>
+            <p>如果配置正确，点击下面的链接应该能正常访问，而不是显示404错误。</p>
+        </div>
+
+        <h3>🔗 测试链接</h3>
+        <div>
+            <a href="/" class="test-link">首页 (/)</a>
+            <a href="/suggestions" class="test-link">建议反馈 (/suggestions)</a>
+            <a href="/market" class="test-link">二手市场 (/market)</a>
+            <a href="/login" class="test-link">登录页面 (/login)</a>
+            <a href="/admin" class="test-link">管理后台 (/admin)</a>
+        </div>
+
+        <h3>📋 测试步骤</h3>
+        <ol>
+            <li>点击上面的任意链接</li>
+            <li>在新页面中刷新浏览器 (Ctrl+R 或 Cmd+R)</li>
+            <li>如果页面正常加载而不是显示404，说明路由配置成功</li>
+        </ol>
+
+        <div class="info">
+            <h3>🔧 技术细节</h3>
+            <p><strong>问题：</strong>刷新 /suggestions 页面时出现404错误</p>
+            <p><strong>原因：</strong>静态网站托管服务器尝试查找 suggestions 文件，但该文件不存在</p>
+            <p><strong>解决方案：</strong>配置服务器将所有非静态资源请求重定向到 index.html</p>
+        </div>
+
+        <div class="info success">
+            <h3>✅ 已实施的修复</h3>
+            <ul>
+                <li>更新了 render.yaml 配置文件，添加了 routes 重定向规则</li>
+                <li>确保 _redirects 文件存在于 public 目录</li>
+                <li>配置了正确的 SPA 路由回退机制</li>
+            </ul>
+        </div>
+
+        <h3>🌐 在线测试</h3>
+        <p>部署完成后，访问以下URL进行测试：</p>
+        <ul>
+            <li><a href="https://smart-community-frontend.onrender.com/suggestions" target="_blank">https://smart-community-frontend.onrender.com/suggestions</a></li>
+            <li><a href="https://smart-community-frontend.onrender.com/market" target="_blank">https://smart-community-frontend.onrender.com/market</a></li>
+        </ul>
+
+        <div class="info">
+            <p><strong>注意：</strong>部署后需要等待2-3分钟让CDN缓存更新。</p>
+        </div>
+    </div>
+
+    <script>
+        // 简单的客户端路由测试
+        function testCurrentRoute() {
+            const path = window.location.pathname;
+            const status = document.getElementById('route-status');
+            if (status) {
+                status.textContent = `当前路径: ${path}`;
+                status.className = path === '/route-test.html' ? 'info' : 'info success';
+            }
+        }
+
+        // 页面加载时执行测试
+        document.addEventListener('DOMContentLoaded', testCurrentRoute);
+    </script>
+</body>
+
+</html>

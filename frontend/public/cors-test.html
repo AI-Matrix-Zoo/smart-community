@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CORS连接测试 - 智慧小区生活平台</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #2563eb;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-section {
+            margin: 20px 0;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+        }
+        
+        .test-section h3 {
+            margin-top: 0;
+            color: #374151;
+        }
+        
+        button {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        button:hover {
+            background: #1d4ed8;
+        }
+        
+        button:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+        
+        .result {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .success {
+            background: #dcfce7;
+            border: 1px solid #16a34a;
+            color: #166534;
+        }
+        
+        .error {
+            background: #fef2f2;
+            border: 1px solid #dc2626;
+            color: #991b1b;
+        }
+        
+        .info {
+            background: #dbeafe;
+            border: 1px solid #2563eb;
+            color: #1e40af;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .status.success {
+            background: #16a34a;
+            color: white;
+        }
+        
+        .status.error {
+            background: #dc2626;
+            color: white;
+        }
+        
+        .status.testing {
+            background: #f59e0b;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔗 CORS连接测试</h1>
+
+        <div class="test-section">
+            <h3>📊 当前状态</h3>
+            <p><strong>前端域名:</strong> <span id="frontend-url"></span></p>
+            <p><strong>后端API:</strong> <span id="backend-url"></span></p>
+            <p><strong>测试状态:</strong> <span id="test-status" class="status testing">准备测试</span></p>
+        </div>
+
+        <div class="test-section">
+            <h3>🧪 API连接测试</h3>
+            <button onclick="testCORS()">测试CORS连接</button>
+            <button onclick="testHealth()">测试健康检查</button>
+            <button onclick="testAnnouncements()">测试公告API</button>
+            <button onclick="clearResults()">清除结果</button>
+            <div id="cors-result" class="result" style="display: none;"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>🔧 故障排除</h3>
+            <p>如果测试失败，请尝试以下解决方案：</p>
+            <ol>
+                <li><strong>清除浏览器缓存:</strong> 按 Ctrl+F5 (Windows) 或 Cmd+Shift+R (Mac)</li>
+                <li><strong>禁用浏览器缓存:</strong> 开发者工具 → Network → 勾选 "Disable cache"</li>
+                <li><strong>检查网络:</strong> 确保网络连接正常</li>
+                <li><strong>重启后端服务:</strong> 联系管理员重启后端服务</li>
+            </ol>
+            <button onclick="window.location.reload()">刷新页面</button>
+            <button onclick="openDevTools()">打开开发者工具</button>
+        </div>
+
+        <div class="test-section">
+            <h3>📋 测试结果说明</h3>
+            <ul>
+                <li><span class="status success">成功</span> - API连接正常，CORS配置正确</li>
+                <li><span class="status error">失败</span> - 存在CORS问题或网络问题</li>
+                <li><span class="status testing">测试中</span> - 正在进行连接测试</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // 配置
+        const BACKEND_URL = 'https://smart-community-backend.onrender.com';
+        const FRONTEND_URL = window.location.origin;
+
+        // 初始化页面
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('frontend-url').textContent = FRONTEND_URL;
+            document.getElementById('backend-url').textContent = BACKEND_URL;
+        });
+
+        // 显示结果
+        function showResult(message, type = 'info') {
+            const resultDiv = document.getElementById('cors-result');
+            resultDiv.style.display = 'block';
+            resultDiv.className = `result ${type}`;
+            resultDiv.textContent = message;
+        }
+
+        // 更新状态
+        function updateStatus(status, type) {
+            const statusSpan = document.getElementById('test-status');
+            statusSpan.textContent = status;
+            statusSpan.className = `status ${type}`;
+        }
+
+        // 测试CORS
+        async function testCORS() {
+            updateStatus('测试中...', 'testing');
+            showResult('正在测试CORS连接...', 'info');
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/cors-test`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    updateStatus('CORS正常', 'success');
+                    showResult(`✅ CORS测试成功！\n\n${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    updateStatus('CORS失败', 'error');
+                    showResult(`❌ CORS测试失败\n状态码: ${response.status}\n状态文本: ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                updateStatus('连接失败', 'error');
+                showResult(`❌ 连接失败\n错误信息: ${error.message}\n\n这通常表示CORS配置有问题或后端服务不可用。`, 'error');
+            }
+        }
+
+        // 测试健康检查
+        async function testHealth() {
+            updateStatus('测试中...', 'testing');
+            showResult('正在测试健康检查...', 'info');
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/health`, {
+                    method: 'GET'
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    updateStatus('服务正常', 'success');
+                    showResult(`✅ 健康检查成功！\n\n${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    updateStatus('服务异常', 'error');
+                    showResult(`❌ 健康检查失败\n状态码: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                updateStatus('服务不可用', 'error');
+                showResult(`❌ 健康检查失败\n错误信息: ${error.message}`, 'error');
+            }
+        }
+
+        // 测试公告API
+        async function testAnnouncements() {
+            updateStatus('测试中...', 'testing');
+            showResult('正在测试公告API...', 'info');
+
+            try {
+                const response = await fetch(`${BACKEND_URL}/api/announcements`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    updateStatus('API正常', 'success');
+                    showResult(`✅ 公告API测试成功！\n\n${JSON.stringify(data, null, 2)}`, 'success');
+                } else {
+                    updateStatus('API失败', 'error');
+                    showResult(`❌ 公告API测试失败\n状态码: ${response.status}`, 'error');
+                }
+            } catch (error) {
+                updateStatus('API不可用', 'error');
+                showResult(`❌ 公告API测试失败\n错误信息: ${error.message}`, 'error');
+            }
+        }
+
+        // 清除结果
+        function clearResults() {
+            document.getElementById('cors-result').style.display = 'none';
+            updateStatus('准备测试', 'testing');
+        }
+
+        // 打开开发者工具提示
+        function openDevTools() {
+            alert('请按 F12 打开开发者工具，然后查看 Console 和 Network 标签页以获取更多调试信息。');
+        }
+
+        // 自动运行初始测试
+        setTimeout(() => {
+            testHealth();
+        }, 1000);
+    </script>
+</body>
+
+</html>
