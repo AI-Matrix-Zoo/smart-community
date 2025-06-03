@@ -52,20 +52,29 @@ function initializeDatabase() {
       email TEXT,
       password TEXT NOT NULL,
       name TEXT NOT NULL,
-      role TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'user',
       building TEXT,
       unit TEXT,
       room TEXT,
+      identity_image TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(phone),
-      UNIQUE(email)
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `, (err) => {
     if (err) {
       console.error('Error creating users table:', err);
     } else {
       console.log('Users table created/verified successfully');
+      
+      // 添加身份验证图片字段（如果不存在）
+      db.run(`ALTER TABLE users ADD COLUMN identity_image TEXT`, (alterErr) => {
+        if (alterErr && !alterErr.message.includes('duplicate column name')) {
+          console.error('Error adding identity_image column:', alterErr);
+        } else if (!alterErr) {
+          console.log('Identity_image column added successfully');
+        }
+      });
+      
       // 检查是否需要添加email字段
       db.run(`ALTER TABLE users ADD COLUMN email TEXT`, (alterErr) => {
         if (alterErr && !alterErr.message.includes('duplicate column name')) {
@@ -74,6 +83,7 @@ function initializeDatabase() {
           console.log('Email column added successfully');
         }
       });
+      
       // 检查是否需要添加unit字段
       db.run(`ALTER TABLE users ADD COLUMN unit TEXT`, (alterErr) => {
         if (alterErr && !alterErr.message.includes('duplicate column name')) {

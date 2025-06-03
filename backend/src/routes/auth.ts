@@ -7,8 +7,44 @@ import { authenticateToken } from '../middleware/auth';
 import { AuthenticatedRequest, UserRole, LoginRequest, RegisterRequest, SendVerificationCodeRequest, VerifyCodeRequest } from '../types';
 import { emailService } from '../services/emailService';
 import { smsService } from '../services/smsService';
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
 
 const router = express.Router();
+
+// 配置文件上传
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '../../uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'identity-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({ 
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|pdf/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('只支持 JPEG、PNG 和 PDF 格式的文件'));
+    }
+  }
+});
 
 // 验证码缓存
 class VerificationCodeCache {
@@ -127,10 +163,6 @@ const registerSchema = Joi.object({
 });
 
 const updateUserSchema = Joi.object({
-  name: Joi.string().optional(),
-  building: Joi.string().optional(),
-  unit: Joi.string().optional(),
-  room: Joi.string().optional(),
   password: Joi.string().min(6).optional().messages({
     'string.min': '密码至少6位'
   })
@@ -257,37 +289,30 @@ router.post('/verify-code', async (req: Request, res: Response): Promise<void> =
 // 登录
 router.post('/login', async (req: Request, res: Response): Promise<void> => {
   try {
-    console.log('🔐 登录请求:', { body: req.body, headers: req.headers['content-type'] });
-    
-    const { error } = loginSchema.validate(req.body);
-    if (error) {
-      console.log('❌ 登录验证失败:', error.details[0].message);
+    const { identifier, password } = req.body;
+
+    if (!identifier || !password) {
       res.status(400).json({
         success: false,
-        message: error.details[0].message
+        message: '请输入姓名和密码'
       });
       return;
     }
 
-    const { identifier, password }: LoginRequest = req.body;
-    console.log('🔍 登录尝试:', { identifier, passwordLength: password?.length });
+    console.log('🔐 登录请求:', {
+      body: { identifier, password: '***' },
+      headers: 'application/json'
+    });
 
-    // 验证邮箱格式
-    if (!isEmail(identifier) && !isPhoneNumber(identifier)) {
-      console.log('❌ 邮箱或手机号格式无效:', identifier);
-      res.status(400).json({
-        success: false,
-        message: '请输入有效的邮箱地址或手机号'
-      });
-      return;
-    }
+    console.log('🔍 登录尝试:', { identifier, passwordLength: password.length });
 
-    // 查找用户
+    // 查找用户 - 支持姓名、邮箱或手机号登录
     db.get(
-      `SELECT * FROM users WHERE email = ? OR phone = ?`,
-      [identifier, identifier],
+      `SELECT * FROM users WHERE name = ? OR email = ? OR phone = ?`,
+      [identifier, identifier, identifier],
       async (err: any, user: any): Promise<void> => {
         if (err) {
+          console.error('Database error:', err);
           res.status(500).json({
             success: false,
             message: '服务器错误'
@@ -298,44 +323,55 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
         if (!user) {
           res.status(401).json({
             success: false,
-            message: '账号或密码错误'
+            message: '用户不存在'
           });
           return;
         }
 
         // 验证密码
-        const isValidPassword = await bcrypt.compare(password, user.password);
-        if (!isValidPassword) {
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        if (!isPasswordValid) {
           res.status(401).json({
             success: false,
-            message: '账号或密码错误'
+            message: '密码错误'
           });
           return;
         }
 
         // 生成JWT token
-        const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key';
+        const jwtSecret = process.env.JWT_SECRET || 'smart-community-secret';
         const payload = {
           userId: user.id,
-          email: user.email,
-          role: user.role,
-          name: user.name
+          name: user.name,
+          role: user.role || 'user',
+          building: user.building,
+          unit: user.unit,
+          room: user.room
         };
         const token = jwt.sign(payload, jwtSecret, { expiresIn: '7d' });
 
-        // 返回用户信息（不包含密码）
-        const { password: _, ...userWithoutPassword } = user;
-        
+        const userResponse = {
+          id: user.id,
+          name: user.name,
+          role: user.role || 'user',
+          building: user.building,
+          unit: user.unit,
+          room: user.room,
+          identityImage: user.identity_image
+        };
+
         res.json({
           success: true,
           data: {
-            user: userWithoutPassword,
+            user: userResponse,
             token
-          }
+          },
+          message: '登录成功'
         });
       }
     );
   } catch (error) {
+    console.error('Login error:', error);
     res.status(500).json({
       success: false,
       message: '服务器错误'
@@ -356,28 +392,13 @@ router.put('/profile', authenticateToken, async (req: AuthenticatedRequest, res:
     }
 
     const user = req.user!;
-    const { name, building, unit, room, password } = req.body;
+    const { password } = req.body;
 
     // 构建更新字段
     const updateFields: string[] = [];
     const updateValues: any[] = [];
 
-    if (name !== undefined) {
-      updateFields.push('name = ?');
-      updateValues.push(name);
-    }
-    if (building !== undefined) {
-      updateFields.push('building = ?');
-      updateValues.push(building);
-    }
-    if (unit !== undefined) {
-      updateFields.push('unit = ?');
-      updateValues.push(unit);
-    }
-    if (room !== undefined) {
-      updateFields.push('room = ?');
-      updateValues.push(room);
-    }
+    // 只允许更新密码
     if (password) {
       const hashedPassword = await bcrypt.hash(password, 10);
       updateFields.push('password = ?');
@@ -416,7 +437,7 @@ router.put('/profile', authenticateToken, async (req: AuthenticatedRequest, res:
 
       // 获取更新后的用户信息
       db.get(
-        'SELECT id, email, name, role, building, unit, room FROM users WHERE id = ?',
+        'SELECT id, email, phone, name, role, building, unit, room, identity_image FROM users WHERE id = ?',
         [user.userId],
         (selectErr: any, updatedUser: any): void => {
           if (selectErr) {
@@ -429,7 +450,17 @@ router.put('/profile', authenticateToken, async (req: AuthenticatedRequest, res:
 
           res.json({
             success: true,
-            data: updatedUser,
+            data: {
+              id: updatedUser.id,
+              name: updatedUser.name,
+              email: updatedUser.email,
+              phone: updatedUser.phone,
+              role: updatedUser.role,
+              building: updatedUser.building,
+              unit: updatedUser.unit,
+              room: updatedUser.room,
+              identityImage: updatedUser.identity_image
+            },
             message: '用户信息更新成功'
           });
         }
@@ -444,114 +475,189 @@ router.put('/profile', authenticateToken, async (req: AuthenticatedRequest, res:
 });
 
 // 注册
-router.post('/register', async (req: Request, res: Response): Promise<void> => {
+router.post('/register', upload.single('identityImage'), async (req: Request, res: Response): Promise<void> => {
   try {
-    const { error } = registerSchema.validate(req.body);
-    if (error) {
+    const { name, email, phone, building, unit, room, password } = req.body;
+    const identityImage = req.file;
+
+    // 验证必填字段
+    if (!name || !building || !unit || !room || !password) {
       res.status(400).json({
         success: false,
-        message: error.details[0].message
+        message: '请填写完整的注册信息'
       });
       return;
     }
 
-    const { identifier, password, name, building, unit, room, verificationCode, verificationType }: RegisterRequest = req.body;
-
-    // 验证验证码
-    const isCodeValid = VerificationCodeCache.verify(identifier, verificationCode);
-    if (!isCodeValid) {
+    // 验证邮箱格式（如果提供了）
+    if (email && !isEmail(email)) {
       res.status(400).json({
         success: false,
-        message: '验证码错误或已过期'
+        message: '请输入有效的邮箱地址'
       });
       return;
     }
 
-    // 检查是否已存在
-    db.get(
-      `SELECT id FROM users WHERE email = ? OR phone = ?`,
-      [identifier, identifier],
-      async (err: any, existingUser: any): Promise<void> => {
-        if (err) {
-          res.status(500).json({
-            success: false,
-            message: '服务器错误'
-          });
-          return;
+    // 验证手机号格式（如果提供了）
+    if (phone && !isPhoneNumber(phone)) {
+      res.status(400).json({
+        success: false,
+        message: '请输入有效的手机号'
+      });
+      return;
+    }
+
+    // 检查姓名是否已被使用
+    const existingUser = await new Promise<any>((resolve, reject) => {
+      db.get(
+        'SELECT id FROM users WHERE name = ?',
+        [name],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
         }
+      );
+    });
 
-        if (existingUser) {
-          res.status(400).json({
-            success: false,
-            message: '该邮箱或手机号已被注册'
-          });
-          return;
-        }
+    if (existingUser) {
+      res.status(400).json({
+        success: false,
+        message: '抱歉，已经有人使用过这个姓名了，请换一个'
+      });
+      return;
+    }
 
-        // 加密密码
-        const hashedPassword = await bcrypt.hash(password, 10);
-
-        // 创建新用户
-        const userId = `user${Date.now()}`;
-        const displayName = `${name} (${building}-${unit}-${room})`;
-
-        // 确定是邮箱还是手机号
-        const isEmailIdentifier = isEmail(identifier);
-        const email = isEmailIdentifier ? identifier : null;
-        const phone = isEmailIdentifier ? null : identifier;
-
-        db.run(
-          `INSERT INTO users (id, email, phone, password, name, role, building, unit, room) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [userId, email, phone, hashedPassword, displayName, UserRole.USER, building, unit, room],
-          function(err: any): void {
-            if (err) {
-              console.error('Register error:', err);
-              res.status(500).json({
-                success: false,
-                message: '注册失败'
-              });
-              return;
-            }
-
-            // 生成JWT token
-            const jwtSecret = process.env.JWT_SECRET || 'fallback-secret-key';
-            const payload = {
-              userId,
-              email: email,
-              phone: phone,
-              role: UserRole.USER,
-              name: displayName
-            };
-            const token = jwt.sign(payload, jwtSecret, { expiresIn: '7d' });
-
-            const newUser = {
-              id: userId,
-              email: email,
-              phone: phone,
-              name: displayName,
-              role: UserRole.USER,
-              building,
-              unit,
-              room
-            };
-
-            res.status(201).json({
-              success: true,
-              data: {
-                user: newUser,
-                token
-              },
-              message: '注册成功'
-            });
+    // 检查邮箱是否已被使用（如果提供了）
+    if (email) {
+      const existingEmail = await new Promise<any>((resolve, reject) => {
+        db.get(
+          'SELECT id FROM users WHERE email = ?',
+          [email],
+          (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
           }
         );
+      });
+
+      if (existingEmail) {
+        res.status(400).json({
+          success: false,
+          message: '该邮箱已被注册，请使用其他邮箱'
+        });
+        return;
       }
+    }
+
+    // 检查手机号是否已被使用（如果提供了）
+    if (phone) {
+      const existingPhone = await new Promise<any>((resolve, reject) => {
+        db.get(
+          'SELECT id FROM users WHERE phone = ?',
+          [phone],
+          (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+          }
+        );
+      });
+
+      if (existingPhone) {
+        res.status(400).json({
+          success: false,
+          message: '该手机号已被注册，请使用其他手机号'
+        });
+        return;
+      }
+    }
+
+    // 检查房间是否已被注册
+    const existingRoom = await new Promise<any>((resolve, reject) => {
+      db.get(
+        'SELECT id FROM users WHERE building = ? AND unit = ? AND room = ?',
+        [building, unit, room],
+        (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        }
+      );
+    });
+
+    if (existingRoom) {
+      res.status(400).json({
+        success: false,
+        message: '该房间已有住户注册，如有疑问请联系管理员'
+      });
+      return;
+    }
+
+    // 处理身份验证图片
+    let identityImagePath = null;
+    if (identityImage) {
+      identityImagePath = `/uploads/${identityImage.filename}`;
+    }
+
+    // 加密密码
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // 生成用户ID
+    const userId = `user${Date.now()}`;
+
+    // 创建用户
+    await new Promise<void>((resolve, reject) => {
+      db.run(
+        `INSERT INTO users (
+          id, name, email, phone, building, unit, room, password, role,
+          identity_image, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'), datetime('now'))`,
+        [userId, name, email || null, phone || null, building, unit, room, hashedPassword, 'user', identityImagePath],
+        function(err) {
+          if (err) reject(err);
+          else resolve();
+        }
+      );
+    });
+
+    // 生成JWT token
+    const token = jwt.sign(
+      { 
+        userId, 
+        name,
+        email: email || null,
+        phone: phone || null,
+        building,
+        unit,
+        room
+      },
+      process.env.JWT_SECRET || 'smart-community-secret',
+      { expiresIn: '7d' }
     );
+
+    console.log(`✅ 用户注册成功: ${name} (${building}栋${unit}单元${room}号)${email ? ` - 邮箱: ${email}` : ''}${phone ? ` - 手机: ${phone}` : ''}`);
+
+    res.status(201).json({
+      success: true,
+      message: '注册成功！欢迎加入智慧小区',
+      data: {
+        token,
+        user: {
+          id: userId,
+          name,
+          email: email || null,
+          phone: phone || null,
+          building,
+          unit,
+          room,
+          identityImage: identityImagePath
+        }
+      }
+    });
+
   } catch (error) {
-    console.error('Register error:', error);
+    console.error('注册失败:', error);
     res.status(500).json({
       success: false,
-      message: '服务器错误'
+      message: '注册失败，请稍后重试'
     });
   }
 });

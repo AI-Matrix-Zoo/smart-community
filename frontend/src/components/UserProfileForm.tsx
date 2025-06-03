@@ -41,12 +41,6 @@ const UserProfileForm: React.FC<UserProfileFormProps> = ({ isOpen, onClose }) =>
     setError(null);
     setIsSubmitting(true);
 
-    if (!name.trim()) {
-      setError('姓名不能为空');
-      setIsSubmitting(false);
-      return;
-    }
-
     if (password && password !== confirmPassword) {
       setError('两次输入的密码不一致');
       setIsSubmitting(false);
@@ -60,15 +54,17 @@ const UserProfileForm: React.FC<UserProfileFormProps> = ({ isOpen, onClose }) =>
     }
 
     try {
-      const updateData: any = {
-        name: name.trim(),
-        building: building.trim() || undefined,
-        unit: unit.trim() || undefined,
-        room: room.trim() || undefined,
-      };
+      const updateData: any = {};
 
+      // 只允许更新密码
       if (password) {
         updateData.password = password;
+      }
+
+      if (Object.keys(updateData).length === 0) {
+        setError('没有可更新的内容');
+        setIsSubmitting(false);
+        return;
       }
 
       const updatedUser = await updateUserProfile(updateData);
@@ -84,44 +80,53 @@ const UserProfileForm: React.FC<UserProfileFormProps> = ({ isOpen, onClose }) =>
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="编辑个人信息">
       <form onSubmit={handleSubmit} className="space-y-4">
-        <Input
-          label="姓名"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="请输入您的姓名"
-          required
-        />
+        {/* 不可编辑的基本信息 */}
+        <div className="bg-gray-50 p-4 rounded-lg border">
+          <h4 className="font-medium text-slate-700 mb-3 flex items-center">
+            <span className="text-amber-500 mr-2">🔒</span>
+            基本信息（不可修改）
+          </h4>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="姓名"
+              value={name}
+              readOnly
+              className="bg-gray-100 cursor-not-allowed"
+            />
+            <Input
+              label="楼栋"
+              value={building}
+              readOnly
+              className="bg-gray-100 cursor-not-allowed"
+            />
+            <Input
+              label="单元"
+              value={unit}
+              readOnly
+              className="bg-gray-100 cursor-not-allowed"
+            />
+            <Input
+              label="房间号"
+              value={room}
+              readOnly
+              className="bg-gray-100 cursor-not-allowed"
+            />
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            ℹ️ 姓名和住址信息在注册时确定，无法修改。如需更改请联系管理员。
+          </p>
+        </div>
         
-        <Input
-          label="楼栋"
-          value={building}
-          onChange={(e) => setBuilding(e.target.value)}
-          placeholder="如：1栋"
-        />
-        
-        <Input
-          label="单元"
-          value={unit}
-          onChange={(e) => setUnit(e.target.value)}
-          placeholder="如：1单元"
-        />
-        
-        <Input
-          label="房间号"
-          value={room}
-          onChange={(e) => setRoom(e.target.value)}
-          placeholder="如：101"
-        />
-        
+        {/* 可编辑的密码部分 */}
         <div className="border-t pt-4">
-          <h4 className="font-medium text-slate-700 mb-3">修改密码（可选）</h4>
+          <h4 className="font-medium text-slate-700 mb-3">修改密码</h4>
           
           <Input
             label="新密码"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="留空则不修改密码"
+            placeholder="输入新密码（至少6位）"
           />
           
           {password && (
@@ -145,7 +150,7 @@ const UserProfileForm: React.FC<UserProfileFormProps> = ({ isOpen, onClose }) =>
           <Button variant="ghost" onClick={onClose} disabled={isSubmitting}>
             取消
           </Button>
-          <Button type="submit" disabled={isSubmitting}>
+          <Button type="submit" disabled={isSubmitting || !password}>
             {isSubmitting ? '保存中...' : '保存'}
           </Button>
         </div>

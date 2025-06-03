@@ -5,7 +5,7 @@ import { Button, Input, LoadingSpinner } from '../components/UIElements';
 import { BuildingOfficeIcon } from '../components/Icons';
 
 const LoginPage: React.FC = () => {
-  const [identifier, setIdentifier] = useState(''); // 手机号或邮箱
+  const [identifier, setIdentifier] = useState(''); // 姓名、手机号或邮箱
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
@@ -57,24 +57,20 @@ const LoginPage: React.FC = () => {
         <div>
           <BuildingOfficeIcon className="mx-auto h-16 w-auto text-primary" />
           <h2 className="mt-6 text-center text-3xl font-extrabold text-slate-900">
-            登录智慧moma平台
+            登录智慧小区平台
           </h2>
-          
-          {/* 手机号登录提示 */}
-          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-            <p className="text-sm text-amber-700 text-center">
-              📧 <strong>温馨提示：</strong>手机号登录功能暂时不可用，请使用邮箱登录
-            </p>
-          </div>
+          <p className="mt-2 text-center text-sm text-slate-600">
+            欢迎回来！请使用您的姓名和密码登录
+          </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <Input
-            label="手机号或邮箱"
+            label="姓名"
             id="identifier"
             type="text"
             value={identifier}
             onChange={(e) => setIdentifier(e.target.value)}
-            placeholder="请输入手机号或邮箱地址"
+            placeholder="请输入您的姓名"
             required
             autoComplete="username"
           />

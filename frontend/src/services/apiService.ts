@@ -464,10 +464,6 @@ export const verifyCode = async (email: string, code: string): Promise<boolean> 
 };
 
 export const updateUserProfile = async (userData: {
-  name?: string;
-  building?: string;
-  unit?: string;
-  room?: string;
   password?: string;
 }): Promise<User> => {
   try {
