@@ -1,52 +1,45 @@
 const nodemailer = require('nodemailer');
 
-async function testSMTP() {
-  console.log('开始测试SMTP连接...');
-  
-  const transporter = nodemailer.createTransport({
+// SMTP配置
+const transporter = nodemailer.createTransporter({
     host: 'smtp.qq.com',
     port: 587,
-    secure: false,
+    secure: false, // true for 465, false for other ports
     auth: {
-      user: '1217112842@qq.com',
-      pass: 'tfxjopirvegaidih'
+        user: 'your-qq-email@qq.com',
+        pass: 'your-qq-smtp-password'
     }
-  });
+});
 
-  try {
-    // 测试连接
-    console.log('测试SMTP连接...');
-    await transporter.verify();
-    console.log('✅ SMTP连接成功');
+// 发送测试邮件
+async function sendTestEmail() {
+    try {
+        console.log('开始发送测试邮件...');
 
-    // 发送测试邮件
-    console.log('发送测试邮件...');
-    const info = await transporter.sendMail({
-      from: '1217112842@qq.com',
-      to: '1217112842@qq.com',
-      subject: '智慧小区 - 邮箱验证码测试',
-      html: `
+        const info = await transporter.sendMail({
+            from: 'your-qq-email@qq.com',
+            to: 'your-qq-email@qq.com',
+            subject: '智慧小区生活平台 - SMTP测试',
+            text: '这是一个SMTP连接测试邮件，如果您收到此邮件，说明邮件服务配置正确。',
+            html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-          <h2 style="color: #333;">智慧小区邮箱验证测试</h2>
-          <p>这是一封测试邮件，验证码是：<strong>123456</strong></p>
-          <p>如果您收到此邮件，说明邮箱服务配置成功！</p>
+          <h2 style="color: #333;">智慧小区生活平台</h2>
+          <p>这是一个SMTP连接测试邮件。</p>
+          <p>如果您收到此邮件，说明邮件服务配置正确。</p>
+          <hr>
+          <p style="color: #666; font-size: 12px;">此邮件由系统自动发送，请勿回复。</p>
         </div>
       `
-    });
+        });
 
-    console.log('✅ 邮件发送成功');
-    console.log('Message ID:', info.messageId);
-    
-  } catch (error) {
-    console.error('❌ SMTP测试失败:', error);
-    console.error('错误详情:', error.message);
-    if (error.code) {
-      console.error('错误代码:', error.code);
+        console.log('邮件发送成功!');
+        console.log('Message ID:', info.messageId);
+        console.log('Preview URL:', nodemailer.getTestMessageUrl(info));
+
+    } catch (error) {
+        console.error('邮件发送失败:', error);
     }
-    if (error.response) {
-      console.error('服务器响应:', error.response);
-    }
-  }
 }
 
-testSMTP(); 
+// 运行测试
+sendTestEmail();

@@ -330,9 +330,9 @@ FRONTEND_URL=http://$SERVER_IP
 EMAIL_HOST=smtp.qq.com
 EMAIL_PORT=587
 EMAIL_SECURE=false
-EMAIL_USER=1217112842@qq.com
-EMAIL_PASS=tfxjopirvegaidih
-EMAIL_FROM=1217112842@qq.com
+EMAIL_USER=your-qq-email@qq.com
+EMAIL_PASS=your-qq-smtp-password
+EMAIL_FROM=your-qq-email@qq.com
 EMAIL_ENABLED=true
 
 # 短信服务配置
@@ -341,7 +341,7 @@ SMS_PROVIDER=aliyun
 ALIBABA_CLOUD_ACCESS_KEY_ID=your-alibaba-access-key-id
 ALIBABA_CLOUD_ACCESS_KEY_SECRET=your-alibaba-access-key-secret
 SMS_SIGN_NAME=智慧小区
-SMS_TEMPLATE_CODE=SMS_319401912
+SMS_TEMPLATE_CODE=your-sms-template-code
 
 # 文件上传配置
 UPLOAD_DIR=./uploads
