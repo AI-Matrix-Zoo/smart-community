@@ -15,11 +15,11 @@ const getApiBaseUrl = (): string => {
     
     // 如果是通过IP地址访问，使用相同的IP地址访问后端
     if (currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
-      return `http://${currentHost}:3000/api`;
+      return `http://${currentHost}:3001/api`;  // 开发环境使用3001端口
     }
     
-    // 默认使用localhost
-    return 'http://localhost:3000/api';
+    // 默认使用localhost:3001（开发环境端口）
+    return 'http://localhost:3001/api';
   }
   
   // 在生产环境中，优先使用环境变量
@@ -27,8 +27,8 @@ const getApiBaseUrl = (): string => {
     return import.meta.env.VITE_API_BASE_URL;
   }
   
-  // 生产环境默认使用Render后端域名
-  return 'https://smart-community-backend.onrender.com/api';
+  // 生产环境默认使用端口3000
+  return 'http://localhost:3000/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();

@@ -29,11 +29,14 @@ const corsOptions = {
   origin: function (origin: string | undefined, callback: (err: Error | null, allow?: boolean) => void) {
     // 允许的域名列表
     const allowedOrigins = [
-      'http://localhost:5173',
+      'http://localhost:5173',      // 生产环境前端
+      'http://localhost:5174',      // 开发环境前端
       'http://123.56.64.5:5173',
+      'http://123.56.64.5:5174',    // 开发环境公网访问
       'http://123.56.64.5',
       'https://smart-community-frontend.onrender.com',
       /^http:\/\/192\.168\.1\.\d+:5173$/,
+      /^http:\/\/192\.168\.1\.\d+:5174$/,  // 开发环境局域网访问
       /^https:\/\/.*\.onrender\.com$/
     ];
 

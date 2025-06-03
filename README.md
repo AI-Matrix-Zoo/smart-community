@@ -6,10 +6,13 @@
 
 ```
 智慧moma生活平台/
-├── frontend/          # 前端项目 (React + TypeScript + Vite)
-├── backend/           # 后端项目 (Node.js + TypeScript + Express)
-├── manage.sh          # 全栈项目管理脚本
-└── README.md          # 项目说明文档
+├── frontend/              # 前端项目 (React + TypeScript + Vite)
+├── backend/               # 后端项目 (Node.js + TypeScript + Express)
+├── scripts/               # 辅助脚本和已废弃脚本
+├── docs/                  # 项目文档
+├── unified-manager.sh     # 统一管理脚本 (推荐)
+├── quick-start.sh         # 快速启动脚本 (新手推荐)
+└── README.md              # 项目说明文档
 ```
 
 ## ✨ 功能特色
@@ -23,81 +26,54 @@
 
 ## 🚀 快速开始
 
-### 一键管理脚本
+### 🎯 推荐方式 - 一键启动
 
-项目提供了统一的管理脚本 `manage.sh`，支持开发、构建、部署的全流程管理：
+```bash
+# 新手推荐：一键启动（自动处理依赖和配置）
+./quick-start.sh
+```
+
+### 🔧 统一管理脚本
+
+项目提供了统一的管理脚本 `unified-manager.sh`，支持开发、构建、部署的全流程管理：
 
 ```bash
 # 查看帮助
-./manage.sh help
+./unified-manager.sh help
 
 # 安装依赖
-./manage.sh install
+./unified-manager.sh install
 
 # 初始化项目
-./manage.sh init
+./unified-manager.sh init
 
-# 启动开发环境
-./manage.sh dev
+# 启动开发环境（交互式）
+./unified-manager.sh dev
+
+# 启动开发环境（后台运行）
+./unified-manager.sh dev-start
+
+# 停止开发环境
+./unified-manager.sh dev-stop
 
 # 构建项目
-./manage.sh build
+./unified-manager.sh build
 
 # 部署到生产环境
-./manage.sh deploy
+./unified-manager.sh deploy
 
 # 查看项目状态
-./manage.sh status
+./unified-manager.sh status
 ```
 
-### 手动安装
+### 📋 端口配置
 
-如果需要手动操作，可以按以下步骤：
-
-#### 1. 环境要求
-
-- Node.js 18+ 
-- npm 8+
-
-#### 2. 安装依赖
-
-```bash
-# 后端依赖
-cd backend && npm install
-
-# 前端依赖  
-cd frontend && npm install
-```
-
-#### 3. 环境配置
-
-后端环境配置文件 `backend/.env`：
-
-```env
-# 服务器配置
-PORT=3000
-NODE_ENV=development
-
-# JWT配置
-JWT_SECRET=your-super-secret-jwt-key-change-in-production
-JWT_EXPIRES_IN=7d
-
-# 阿里云短信配置 (可选)
-ALIBABA_CLOUD_ACCESS_KEY_ID=your-access-key-id
-ALIBABA_CLOUD_ACCESS_KEY_SECRET=your-access-key-secret
-ALIBABA_CLOUD_SMS_SIGN_NAME=your-sms-sign
-ALIBABA_CLOUD_SMS_TEMPLATE_CODE=your-template-code
-```
-
-#### 4. 启动服务
-
-```bash
-# 启动后端 (端口 3000)
-cd backend && npm run dev
-
-# 启动前端 (端口 5173)
-cd frontend && npm run dev
-```
+- **开发环境**:
+  - 前端: http://localhost:5174
+  - 后端: http://localhost:3001
+- **生产环境**:
+  - 前端: http://localhost:5173
+  - 后端: http://localhost:3000
 
 ## 🎯 演示账户
 
@@ -128,7 +104,7 @@ cd frontend && npm run dev
 ## 📁 项目结构
 
 ```
-smart-community/
+智慧moma生活平台/
 ├── frontend/                 # 前端应用
 │   ├── src/
 │   │   ├── components/      # 通用组件
@@ -146,8 +122,19 @@ smart-community/
 │   │   ├── types/          # TypeScript类型
 │   │   └── utils/          # 工具函数
 │   └── package.json
-├── manage.sh                 # 一键管理脚本
-├── optimize-ts.sh           # TypeScript优化脚本
+├── scripts/                  # 辅助脚本文件夹
+│   ├── README.md            # 脚本说明文档
+│   ├── dev-manager.sh.deprecated    # 已废弃的开发管理脚本
+│   ├── manage.sh.deprecated         # 已废弃的生产管理脚本
+│   ├── optimize-ts.sh              # TypeScript优化脚本
+│   ├── test-services.sh            # 服务测试脚本
+│   └── ...                         # 其他辅助脚本
+├── docs/                     # 项目文档
+│   ├── 本地开发测试指南.md    # 开发指南
+│   ├── 脚本合并说明.md       # 脚本迁移指南
+│   └── 修复总结.md          # 问题修复记录
+├── unified-manager.sh        # 统一管理脚本 (推荐)
+├── quick-start.sh           # 快速启动脚本 (新手推荐)
 └── README.md
 ```
 
@@ -159,13 +146,13 @@ smart-community/
 
 ```bash
 # 运行 TypeScript 优化脚本
-./optimize-ts.sh
+./scripts/optimize-ts.sh
 
 # 或者在 Cursor/VSCode 中重启 TypeScript 服务
 # Ctrl+Shift+P -> "TypeScript: Restart TS Server"
 ```
 
-详细的优化说明请查看 [TYPESCRIPT_OPTIMIZATION.md](./TYPESCRIPT_OPTIMIZATION.md)
+详细的优化说明请查看 `docs/` 文件夹中的相关文档。
 
 ### 主要优化措施
 
@@ -179,16 +166,20 @@ smart-community/
 
 ### 开发环境
 ```bash
-./manage.sh dev
+# 推荐方式
+./quick-start.sh
+
+# 或者使用统一管理脚本
+./unified-manager.sh dev-start
 ```
 
 ### 生产环境
 ```bash
 # 构建并部署
-./manage.sh deploy
+./unified-manager.sh deploy
 
 # 停止服务
-./manage.sh stop
+./unified-manager.sh prod-stop
 ```
 
 ### Nginx 配置示例
@@ -257,10 +248,19 @@ server {
 
 如果遇到问题，请：
 
-1. 查看 [TYPESCRIPT_OPTIMIZATION.md](./TYPESCRIPT_OPTIMIZATION.md) 了解性能优化
-2. 运行 `./manage.sh status` 检查项目状态
-3. 查看控制台错误信息
-4. 提交 Issue 描述问题
+1. 查看 `docs/` 文件夹中的相关文档了解详细指南
+2. 运行 `./unified-manager.sh status` 检查项目状态
+3. 查看 `logs/` 文件夹中的日志文件
+4. 尝试运行 `./quick-start.sh` 重新启动
+5. 查看控制台错误信息
+6. 提交 Issue 描述问题
+
+### 📚 相关文档
+
+- `docs/本地开发测试指南.md` - 详细的开发环境搭建指南
+- `docs/脚本合并说明.md` - 从旧脚本迁移的指南
+- `docs/修复总结.md` - 常见问题的修复记录
+- `scripts/README.md` - 辅助脚本使用说明
 
 ---
 
