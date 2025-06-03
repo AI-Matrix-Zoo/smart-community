@@ -87,6 +87,18 @@ app.get('/health', (req, res) => {
   });
 });
 
+// 临时调试端点 - 检查邮箱配置
+app.get('/debug/email-config', (req, res) => {
+  res.json({
+    EMAIL_HOST: process.env.EMAIL_HOST,
+    EMAIL_PORT: process.env.EMAIL_PORT,
+    EMAIL_USER: process.env.EMAIL_USER,
+    EMAIL_FROM: process.env.EMAIL_FROM,
+    EMAIL_ENABLED: process.env.EMAIL_ENABLED,
+    EMAIL_SECURE: process.env.EMAIL_SECURE
+  });
+});
+
 // API健康检查端点
 app.get('/api/health', (req, res) => {
   res.json({

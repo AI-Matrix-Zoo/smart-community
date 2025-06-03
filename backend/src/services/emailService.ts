@@ -25,19 +25,19 @@ export class EmailService {
       const mailOptions = {
         from: process.env.EMAIL_FROM || 'noreply@smart-community.com',
         to: email,
-        subject: '智慧moma - 邮箱验证码',
+        subject: '智慧小区 - 邮箱验证码',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9f9f9;">
             <div style="background-color: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
               <div style="text-align: center; margin-bottom: 30px;">
-                <h1 style="color: #2563eb; margin: 0; font-size: 28px;">🏠 智慧moma</h1>
+                <h1 style="color: #2563eb; margin: 0; font-size: 28px;">🏠 智慧小区</h1>
                 <p style="color: #666; margin: 10px 0 0 0;">邮箱验证码</p>
               </div>
               
               <div style="margin-bottom: 30px;">
                 <p style="color: #333; font-size: 16px; line-height: 1.6;">您好！</p>
                 <p style="color: #333; font-size: 16px; line-height: 1.6;">
-                  您正在注册智慧moma账户，请使用以下验证码完成注册：
+                  您正在注册智慧小区账户，请使用以下验证码完成注册：
                 </p>
               </div>
               
@@ -60,7 +60,7 @@ export class EmailService {
               
               <div style="border-top: 1px solid #e5e7eb; margin-top: 30px; padding-top: 20px;">
                 <p style="color: #9ca3af; font-size: 12px; text-align: center; margin: 0;">
-                  此邮件由智慧moma系统自动发送，请勿回复<br>
+                  此邮件由智慧小区系统自动发送，请勿回复<br>
                   发送时间：${new Date().toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })}
                 </p>
               </div>
