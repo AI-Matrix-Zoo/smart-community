@@ -1,9 +1,13 @@
+import dotenv from 'dotenv';
+import path from 'path';
+
+// 首先加载环境变量
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
-import dotenv from 'dotenv';
-import path from 'path';
 
 // 导入路由
 import authRoutes from './routes/auth';
@@ -11,12 +15,10 @@ import suggestionRoutes from './routes/suggestions';
 import marketRoutes from './routes/market';
 import announcementRoutes from './routes/announcements';
 import adminRoutes from './routes/admin';
+import debugRoutes from './routes/debug';
 
 // 导入数据库配置
 import './config/database';
-
-// 加载环境变量
-dotenv.config();
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -76,6 +78,7 @@ app.use('/api/suggestions', suggestionRoutes);
 app.use('/api/market', marketRoutes);
 app.use('/api/announcements', announcementRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/debug', debugRoutes);
 
 // 健康检查端点
 app.get('/health', (req, res) => {

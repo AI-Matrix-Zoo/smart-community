@@ -111,9 +111,10 @@ export class UnifiedEmailService {
   private static instance: UnifiedEmailService;
   private realEmailService: EmailService | null = null;
   private isRealEmailEnabled: boolean = false;
+  private initializationPromise: Promise<void> | null = null;
 
   private constructor() {
-    this.initializeEmailService();
+    this.initializationPromise = this.initializeEmailService();
   }
 
   static getInstance(): UnifiedEmailService {
@@ -123,7 +124,7 @@ export class UnifiedEmailService {
     return UnifiedEmailService.instance;
   }
 
-  private initializeEmailService() {
+  private async initializeEmailService(): Promise<void> {
     // 检查是否配置了真实邮箱服务
     const emailHost = process.env.EMAIL_HOST;
     const emailUser = process.env.EMAIL_USER;
@@ -141,16 +142,19 @@ export class UnifiedEmailService {
             pass: emailPass,
           },
         });
-        this.isRealEmailEnabled = true;
-        console.log('📧 真实邮箱服务已启用');
         
-        // 测试连接
-        this.realEmailService.testConnection().then(success => {
-          if (!success) {
-            console.log('📧 邮箱连接测试失败，将使用模拟服务');
-            this.isRealEmailEnabled = false;
-          }
-        });
+        console.log('📧 正在测试邮箱服务连接...');
+        
+        // 同步等待连接测试结果
+        const connectionSuccess = await this.realEmailService.testConnection();
+        
+        if (connectionSuccess) {
+          this.isRealEmailEnabled = true;
+          console.log('📧 真实邮箱服务已启用');
+        } else {
+          console.log('📧 邮箱连接测试失败，将使用模拟服务');
+          this.isRealEmailEnabled = false;
+        }
       } catch (error) {
         console.error('📧 邮箱服务初始化失败，使用模拟服务:', error);
         this.isRealEmailEnabled = false;
@@ -162,6 +166,11 @@ export class UnifiedEmailService {
   }
 
   async sendVerificationCode(email: string, code: string): Promise<boolean> {
+    // 确保初始化完成
+    if (this.initializationPromise) {
+      await this.initializationPromise;
+    }
+    
     if (this.isRealEmailEnabled && this.realEmailService) {
       return await this.realEmailService.sendVerificationCode(email, code);
     } else {

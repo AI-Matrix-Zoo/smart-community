@@ -18,23 +18,20 @@ echo
 
 # 检查邮箱配置
 echo "🔍 检查邮箱服务配置..."
-if [ -f "backend/.env" ]; then
-    if grep -q "EMAIL_ENABLED=true" backend/.env; then
-        EMAIL_USER=$(grep "EMAIL_USER=" backend/.env | cut -d'=' -f2)
-        EMAIL_HOST=$(grep "EMAIL_HOST=" backend/.env | cut -d'=' -f2)
-        echo "✅ 真实邮箱服务已启用"
-        echo "   📧 邮箱: $EMAIL_USER"
-        echo "   🌐 SMTP: $EMAIL_HOST"
-        REAL_EMAIL=true
-    else
-        echo "⚠️  当前使用模拟邮箱服务"
-        echo "   💡 验证码将在后端控制台显示"
-        REAL_EMAIL=false
-    fi
+CONFIG_RESPONSE=$(curl -s http://localhost:3001/debug/email-config)
+echo "📋 当前配置:"
+echo "$CONFIG_RESPONSE" | jq . 2>/dev/null || echo "$CONFIG_RESPONSE"
+
+echo
+
+# 检查是否启用真实邮箱服务
+if echo "$CONFIG_RESPONSE" | grep -q '"EMAIL_ENABLED":"true"'; then
+    echo "✅ 真实邮箱服务已启用"
+    REAL_EMAIL=true
 else
-    echo "❌ 未找到配置文件 backend/.env"
-    echo "   请运行: ./scripts/setup-email-service.sh"
-    exit 1
+    echo "⚠️  当前使用模拟邮箱服务"
+    echo "   💡 验证码将在后端控制台显示"
+    REAL_EMAIL=false
 fi
 
 echo
@@ -103,30 +100,19 @@ if echo "$RESPONSE" | grep -q '"success":true'; then
 else
     echo
     echo "❌ 验证码发送失败"
-    
-    # 分析可能的错误原因
-    if echo "$RESPONSE" | grep -q "该邮箱或手机号已被注册"; then
-        echo "   原因: 该邮箱已被注册"
-        echo "   解决: 使用其他邮箱地址"
-    elif echo "$RESPONSE" | grep -q "邮件发送失败"; then
-        echo "   原因: 邮件发送失败"
-        echo "   解决: 检查邮箱服务配置"
-    else
-        echo "   请检查:"
-        echo "   1. 邮箱地址格式是否正确"
-        echo "   2. 后端服务是否正常运行"
-        echo "   3. 邮箱服务配置是否正确"
-    fi
-    
     echo
-    echo "🔧 故障排除："
-    echo "   1. 查看后端日志: 在后端服务终端查看错误信息"
-    echo "   2. 检查配置: cat backend/.env | grep EMAIL"
-    echo "   3. 重新配置: ./scripts/setup-email-service.sh"
+    echo "🔧 故障排除建议："
+    echo "   1. 检查邮箱服务配置"
+    echo "   2. 查看后端日志: tail -f logs/dev-backend-*.log"
+    echo "   3. 测试邮箱连接: curl http://localhost:3001/debug/email-config"
+    echo "   4. 重启后端服务: ./unified-manager.sh dev-restart"
 fi
 
 echo
-echo "📚 更多帮助："
-echo "   - 配置指南: docs/EMAIL_SETUP_GUIDE.md"
-echo "   - 重启服务: ./unified-manager.sh dev-restart"
-echo "   - 查看日志: 在后端服务终端查看实时日志" 
+echo "📊 详细诊断信息："
+echo "   🔗 邮箱配置: http://localhost:3001/debug/email-config"
+echo "   🔗 系统信息: http://localhost:3001/debug/system-info"
+echo "   📋 后端日志: tail -f logs/dev-backend-*.log"
+
+echo
+echo "=== 测试完成 ===" 
