@@ -19,6 +19,7 @@ export interface SuggestionComment {
   suggestionId: string;
   userId: string;
   userName: string;
+  userVerified?: boolean;
   content: string;
   createdAt: string;
 }
@@ -37,6 +38,7 @@ export interface Suggestion {
   category: string;
   submittedBy: string;
   submittedByUserId: string;
+  submittedByUserVerified?: boolean;
   submittedDate: string;
   status: SuggestionStatus;
   progressUpdates: SuggestionProgressUpdate[];
@@ -51,6 +53,7 @@ export interface MarketItemComment {
   marketItemId: string;
   userId: string;
   userName: string;
+  userVerified?: boolean;
   content: string;
   createdAt: string;
 }
@@ -68,9 +71,11 @@ export interface MarketItem {
   description: string;
   price: number;
   category: string;
-  imageUrl: string;
+  imageUrl: string; // 主图片，保持向后兼容
+  imageUrls?: string[]; // 多图片数组
   seller: string;
   sellerUserId?: string;
+  sellerVerified?: boolean;
   postedDate: string;
   contactInfo?: string;
   comments?: MarketItemComment[];
@@ -94,6 +99,10 @@ export interface User {
   building?: string;
   unit?: string;
   room?: string;
+  identity_image?: string;
+  is_verified?: boolean;
+  verified_at?: string;
+  verified_by?: string;
   created_at?: string;
   updated_at?: string;
 }

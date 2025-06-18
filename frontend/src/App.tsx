@@ -212,14 +212,16 @@ const AppContent: React.FC = () => {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
           <Route path="/suggestions" element={<SuggestionsPage />} />
+          <Route path="/suggestions/:id" element={<SuggestionsPage />} />
           <Route path="/market" element={<MarketPage />} />
-          <Route 
-            path="/admin" 
+          <Route path="/market/item/:id" element={<MarketPage />} />
+          <Route
+            path="/admin"
             element={
               <ProtectedRoute requiredRoles={[UserRole.ADMIN, UserRole.PROPERTY]}>
                 <AdminDashboardPage />
               </ProtectedRoute>
-            } 
+            }
           />
         </Routes>
       </main>

@@ -149,12 +149,12 @@ export class UnifiedEmailService {
         const connectionSuccess = await this.realEmailService.testConnection();
         
         if (connectionSuccess) {
-          this.isRealEmailEnabled = true;
-          console.log('📧 真实邮箱服务已启用');
+        this.isRealEmailEnabled = true;
+        console.log('📧 真实邮箱服务已启用');
         } else {
-          console.log('📧 邮箱连接测试失败，将使用模拟服务');
-          this.isRealEmailEnabled = false;
-        }
+            console.log('📧 邮箱连接测试失败，将使用模拟服务');
+            this.isRealEmailEnabled = false;
+          }
       } catch (error) {
         console.error('📧 邮箱服务初始化失败，使用模拟服务:', error);
         this.isRealEmailEnabled = false;

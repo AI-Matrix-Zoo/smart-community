@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>简单网络测试</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 10px 5px;
+            font-size: 16px;
+        }
+        .test-button:hover {
+            background-color: #0056b3;
+        }
+        .log {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 14px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .info { color: #17a2b8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>简单网络测试</h1>
+        
+        <div>
+            <button class="test-button" onclick="testBasic()">基础测试</button>
+            <button class="test-button" onclick="testAPI()">API测试</button>
+            <button class="test-button" onclick="clearLog()">清除日志</button>
+        </div>
+        
+        <div id="log" class="log"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'success' ? 'success' : type === 'error' ? 'error' : 'info';
+            logDiv.innerHTML += `<div class="${className}">[${timestamp}] ${message}</div>`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+        }
+
+        async function testBasic() {
+            log('=== 开始基础测试 ===', 'info');
+            
+            // 环境信息
+            log(`User Agent: ${navigator.userAgent}`, 'info');
+            log(`网络状态: ${navigator.onLine ? '在线' : '离线'}`, 'info');
+            log(`当前URL: ${window.location.href}`, 'info');
+            
+            // 测试简单的同源请求
+            try {
+                const response = await fetch('/');
+                log(`同源请求状态: ${response.status}`, response.ok ? 'success' : 'error');
+            } catch (error) {
+                log(`同源请求失败: ${error.message}`, 'error');
+            }
+        }
+
+        async function testAPI() {
+            log('=== 开始API测试 ===', 'info');
+            
+            const apiUrl = 'http://123.56.64.5:3000';
+            
+            // 测试1：健康检查
+            try {
+                log('测试健康检查端点...', 'info');
+                const response = await fetch(`${apiUrl}/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.text();
+                    log(`健康检查成功: ${data}`, 'success');
+                } else {
+                    log(`健康检查失败: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`健康检查异常: ${error.message}`, 'error');
+                log(`错误详情: ${error.stack}`, 'error');
+            }
+            
+            // 测试2：市场API
+            try {
+                log('测试市场API...', 'info');
+                const response = await fetch(`${apiUrl}/api/market`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`市场API成功，数据长度: ${Array.isArray(data) ? data.length : '非数组'}`, 'success');
+                } else {
+                    log(`市场API失败: ${response.status} ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                log(`市场API异常: ${error.message}`, 'error');
+                log(`错误详情: ${error.stack}`, 'error');
+            }
+            
+            // 测试3：使用XMLHttpRequest
+            try {
+                log('使用XMLHttpRequest测试...', 'info');
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', `${apiUrl}/api/market`, true);
+                xhr.setRequestHeader('Accept', 'application/json');
+                
+                xhr.onload = function() {
+                    if (xhr.status === 200) {
+                        log(`XMLHttpRequest成功: ${xhr.status}`, 'success');
+                        try {
+                            const data = JSON.parse(xhr.responseText);
+                            log(`数据解析成功，长度: ${Array.isArray(data) ? data.length : '非数组'}`, 'success');
+                        } catch (e) {
+                            log(`数据解析失败: ${e.message}`, 'error');
+                        }
+                    } else {
+                        log(`XMLHttpRequest失败: ${xhr.status} ${xhr.statusText}`, 'error');
+                    }
+                };
+                
+                xhr.onerror = function() {
+                    log(`XMLHttpRequest网络错误`, 'error');
+                };
+                
+                xhr.ontimeout = function() {
+                    log(`XMLHttpRequest超时`, 'error');
+                };
+                
+                xhr.timeout = 10000; // 10秒超时
+                xhr.send();
+                
+            } catch (error) {
+                log(`XMLHttpRequest异常: ${error.message}`, 'error');
+            }
+        }
+
+        // 页面加载完成后自动运行基础测试
+        window.addEventListener('load', function() {
+            log('页面加载完成', 'success');
+            testBasic();
+        });
+    </script>
+</body>
+</html> 

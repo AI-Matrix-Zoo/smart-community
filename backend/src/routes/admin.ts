@@ -1,5 +1,6 @@
 import express, { Response } from 'express';
 import Joi from 'joi';
+import bcrypt from 'bcryptjs';
 import { db } from '../config/database';
 import { authenticateToken, requireAdmin } from '../middleware/auth';
 import { AuthenticatedRequest, User, UserRole } from '../types';
@@ -9,6 +10,7 @@ const router = express.Router();
 // 验证schema
 const updateUserSchema = Joi.object({
   name: Joi.string().optional(),
+  email: Joi.string().email().optional(),
   phone: Joi.string().pattern(/^1[3-9]\d{9}$/).optional(),
   role: Joi.string().valid(...Object.values(UserRole)).optional(),
   building: Joi.string().optional(),
@@ -19,7 +21,7 @@ const updateUserSchema = Joi.object({
 // 获取所有用户（管理员）
 router.get('/users', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response): void => {
   db.all(
-    'SELECT id, phone, email, name, role, building, unit, room, created_at, updated_at FROM users ORDER BY created_at DESC',
+    'SELECT id, phone, email, name, role, building, unit, room, identity_image, is_verified, verified_at, verified_by, created_at, updated_at FROM users ORDER BY created_at DESC',
     [],
     (err: any, rows: any[]): void => {
       if (err) {
@@ -39,6 +41,10 @@ router.get('/users', authenticateToken, requireAdmin, (req: AuthenticatedRequest
         building: row.building,
         unit: row.unit,
         room: row.room,
+        identity_image: row.identity_image,
+        is_verified: Boolean(row.is_verified),
+        verified_at: row.verified_at,
+        verified_by: row.verified_by,
         createdAt: row.created_at,
         updatedAt: row.updated_at
       }));
@@ -210,6 +216,121 @@ router.delete('/suggestions/:id', authenticateToken, requireAdmin, (req: Authent
       message: '建议删除成功'
     });
   });
+});
+
+// 认证用户（管理员）
+router.post('/users/:id/verify', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response): void => {
+  const { id } = req.params;
+  const currentUser = req.user!;
+
+  db.run(
+    `UPDATE users SET is_verified = 1, verified_at = CURRENT_TIMESTAMP, verified_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    [currentUser.name, id],
+    function(err: any): void {
+      if (err) {
+        res.status(500).json({
+          success: false,
+          message: '认证用户失败'
+        });
+        return;
+      }
+
+      if (this.changes === 0) {
+        res.status(404).json({
+          success: false,
+          message: '用户不存在'
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        message: '用户认证成功'
+      });
+    }
+  );
+});
+
+// 取消用户认证（管理员）
+router.post('/users/:id/unverify', authenticateToken, requireAdmin, (req: AuthenticatedRequest, res: Response): void => {
+  const { id } = req.params;
+
+  db.run(
+    `UPDATE users SET is_verified = 0, verified_at = NULL, verified_by = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+    [id],
+    function(err: any): void {
+      if (err) {
+        res.status(500).json({
+          success: false,
+          message: '取消认证失败'
+        });
+        return;
+      }
+
+      if (this.changes === 0) {
+        res.status(404).json({
+          success: false,
+          message: '用户不存在'
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+        message: '已取消用户认证'
+      });
+    }
+  );
+});
+
+// 修改用户密码（管理员）
+router.post('/users/:id/reset-password', authenticateToken, requireAdmin, async (req: AuthenticatedRequest, res: Response): Promise<void> => {
+  const { id } = req.params;
+  const { newPassword } = req.body;
+
+  if (!newPassword || newPassword.length < 6) {
+    res.status(400).json({
+      success: false,
+      message: '新密码至少需要6位字符'
+    });
+    return;
+  }
+
+  try {
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    db.run(
+      `UPDATE users SET password = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
+      [hashedPassword, id],
+      function(err: any): void {
+        if (err) {
+          res.status(500).json({
+            success: false,
+            message: '修改密码失败'
+          });
+          return;
+        }
+
+        if (this.changes === 0) {
+          res.status(404).json({
+            success: false,
+            message: '用户不存在'
+          });
+          return;
+        }
+
+        res.json({
+          success: true,
+          message: '用户密码修改成功'
+        });
+      }
+    );
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: '密码加密失败'
+    });
+  }
 });
 
 export default router; 

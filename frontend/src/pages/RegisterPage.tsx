@@ -37,18 +37,18 @@ const RegisterPage: React.FC = () => {
       // 检查文件大小（5MB限制）
       if (file.size > 5 * 1024 * 1024) {
         setError('文件大小不能超过5MB');
-        return;
-      }
-      
+      return;
+    }
+
       // 检查文件类型
       const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
       if (!allowedTypes.includes(file.type)) {
         setError('只支持 JPEG、PNG 和 PDF 格式的文件');
-        return;
-      }
-      
+      return;
+    }
+
       setIdentityImage(file);
-      setError('');
+    setError('');
     }
   };
 
@@ -118,7 +118,7 @@ const RegisterPage: React.FC = () => {
         formData.append('identityImage', identityImage);
       }
 
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch(`${import.meta.env.DEV ? 'http://localhost:3000' : ''}/api/auth/register`, {
         method: 'POST',
         body: formData,
       });
@@ -135,8 +135,8 @@ const RegisterPage: React.FC = () => {
           auth.updateUser(data.data.user);
         }
         
-        navigate('/');
-      } else {
+      navigate('/');
+    } else {
         setError(data.message || '注册失败，请重试。');
       }
     } catch (err) {
@@ -154,7 +154,7 @@ const RegisterPage: React.FC = () => {
           <h1 className="text-3xl font-bold text-slate-800">注册账户</h1>
           <p className="text-slate-600 mt-2">加入智慧小区生活平台</p>
         </div>
-
+          
         {/* 重要提醒 */}
         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
           <div className="flex items-start">
@@ -254,28 +254,28 @@ const RegisterPage: React.FC = () => {
               <label htmlFor="building" className="block text-sm font-medium text-slate-700 mb-2">
                 楼栋
               </label>
-              <Input
+            <Input
                 id="building"
-                type="text"
+              type="text"
                 placeholder="如：1栋"
-                value={building}
-                onChange={(e) => setBuilding(e.target.value)}
-                required
-              />
+              value={building}
+              onChange={(e) => setBuilding(e.target.value)}
+              required
+            />
             </div>
             <div>
               <label htmlFor="unit" className="block text-sm font-medium text-slate-700 mb-2">
                 单元号
               </label>
-              <Input
+            <Input
                 id="unit"
-                type="text"
+              type="text"
                 placeholder="如：1单元"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
-                required
-              />
-            </div>
+              value={unit}
+              onChange={(e) => setUnit(e.target.value)}
+              required
+            />
+          </div>
             <div>
               <label htmlFor="room" className="block text-sm font-medium text-slate-700 mb-2">
                 房号

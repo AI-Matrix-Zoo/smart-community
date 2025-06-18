@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>移动端网络诊断工具</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 10px;
+        }
+        
+        .container {
+            max-width: 100%;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+        
+        .section {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .section:last-child {
+            border-bottom: none;
+        }
+        
+        .section h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section h3::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: #4facfe;
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+        
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            min-width: 120px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%);
+        }
+        
+        .btn-warning {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        }
+        
+        .log {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            line-height: 1.5;
+        }
+        
+        .log-entry {
+            margin-bottom: 8px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            word-wrap: break-word;
+        }
+        
+        .success { 
+            background: #d4edda; 
+            color: #155724; 
+            border-left: 4px solid #28a745;
+        }
+        
+        .error { 
+            background: #f8d7da; 
+            color: #721c24; 
+            border-left: 4px solid #dc3545;
+        }
+        
+        .info { 
+            background: #d1ecf1; 
+            color: #0c5460; 
+            border-left: 4px solid #17a2b8;
+        }
+        
+        .warning { 
+            background: #fff3cd; 
+            color: #856404; 
+            border-left: 4px solid #ffc107;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .status-online { background: #28a745; }
+        .status-offline { background: #dc3545; }
+        .status-unknown { background: #6c757d; }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 10px;
+            font-size: 14px;
+        }
+        
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            border-left: 3px solid #4facfe;
+        }
+        
+        .info-label {
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .info-value {
+            color: #6c757d;
+            text-align: right;
+            word-break: break-all;
+        }
+        
+        .loading {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .test-result {
+            margin: 10px 0;
+            padding: 12px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        
+        .test-result.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .test-result.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                margin: 5px;
+            }
+            
+            .section {
+                padding: 15px;
+            }
+            
+            button {
+                min-width: 100px;
+                padding: 10px 16px;
+                font-size: 13px;
+            }
+            
+            .info-item {
+                flex-direction: column;
+                gap: 4px;
+            }
+            
+            .info-value {
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔧 移动端网络诊断</h1>
+            <p>智慧moma生活平台 - 网络连接测试工具</p>
+        </div>
+
+        <div class="section">
+            <h3>📱 设备信息</h3>
+            <div id="device-info" class="info-grid"></div>
+        </div>
+
+        <div class="section">
+            <h3>🌐 网络连接测试</h3>
+            <div class="button-group">
+                <button onclick="testBasicConnection()">基础连接测试</button>
+                <button onclick="testCORS()">CORS测试</button>
+                <button onclick="testDNS()">DNS解析测试</button>
+            </div>
+            <div id="connection-results"></div>
+            <div id="connection-log" class="log"></div>
+        </div>
+
+        <div class="section">
+            <h3>🛒 API功能测试</h3>
+            <div class="button-group">
+                <button onclick="testMarketAPI()">市场数据API</button>
+                <button onclick="testAnnouncementsAPI()">公告数据API</button>
+                <button onclick="testSuggestionsAPI()">建议数据API</button>
+                <button onclick="testAllAPIs()">全部API测试</button>
+            </div>
+            <div id="api-results"></div>
+            <div id="api-log" class="log"></div>
+        </div>
+
+        <div class="section">
+            <h3>🔍 详细诊断</h3>
+            <div class="button-group">
+                <button onclick="runFullDiagnostic()" class="btn-warning">完整诊断</button>
+                <button onclick="clearAllLogs()" class="btn-danger">清空日志</button>
+                <button onclick="exportLogs()" class="btn-success">导出日志</button>
+            </div>
+            <div id="diagnostic-log" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        // 全局变量
+        let diagnosticData = {
+            deviceInfo: {},
+            connectionTests: {},
+            apiTests: {},
+            errors: []
+        };
+
+        // 获取API基础地址
+        function getApiBaseUrl() {
+            const hostname = window.location.hostname;
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                return 'http://localhost:3000';
+            } else {
+                return `http://${hostname}:3000`;
+            }
+        }
+
+        // 日志函数
+        function log(message, type = 'info', containerId = 'diagnostic-log') {
+            const logContainer = document.getElementById(containerId);
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = `log-entry ${type}`;
+            logEntry.innerHTML = `<strong>[${timestamp}]</strong> ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            
+            // 保存到诊断数据
+            diagnosticData.errors.push({
+                timestamp,
+                type,
+                message,
+                containerId
+            });
+            
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // 显示测试结果
+        function showResult(containerId, success, message) {
+            const container = document.getElementById(containerId);
+            const resultDiv = document.createElement('div');
+            resultDiv.className = `test-result ${success ? 'success' : 'error'}`;
+            resultDiv.innerHTML = `${success ? '✅' : '❌'} ${message}`;
+            container.innerHTML = '';
+            container.appendChild(resultDiv);
+        }
+
+        // 显示设备信息
+        function showDeviceInfo() {
+            const info = {
+                '用户代理': navigator.userAgent,
+                '屏幕尺寸': `${screen.width}×${screen.height}`,
+                '视口尺寸': `${window.innerWidth}×${window.innerHeight}`,
+                '设备像素比': window.devicePixelRatio || 1,
+                '当前URL': window.location.href,
+                'API地址': getApiBaseUrl(),
+                '支持Fetch': typeof fetch !== 'undefined' ? '是' : '否',
+                '网络状态': navigator.onLine ? '在线' : '离线',
+                '连接类型': navigator.connection ? navigator.connection.effectiveType : '未知',
+                '语言': navigator.language,
+                '时区': Intl.DateTimeFormat().resolvedOptions().timeZone,
+                '本地时间': new Date().toLocaleString()
+            };
+
+            diagnosticData.deviceInfo = info;
+
+            const container = document.getElementById('device-info');
+            container.innerHTML = Object.entries(info)
+                .map(([key, value]) => `
+                    <div class="info-item">
+                        <span class="info-label">${key}:</span>
+                        <span class="info-value">${value}</span>
+                    </div>
+                `).join('');
+        }
+
+        // 基础连接测试
+        async function testBasicConnection() {
+            log('🔄 开始基础连接测试...', 'info', 'connection-log');
+            
+            try {
+                const apiUrl = getApiBaseUrl();
+                const startTime = Date.now();
+                
+                // 测试健康检查端点
+                const response = await fetch(`${apiUrl}/api/health`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Cache-Control': 'no-cache'
+                    },
+                    cache: 'no-cache'
+                });
+                
+                const endTime = Date.now();
+                const responseTime = endTime - startTime;
+                
+                log(`📡 响应时间: ${responseTime}ms`, 'info', 'connection-log');
+                log(`📊 状态码: ${response.status} ${response.statusText}`, 'info', 'connection-log');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`✅ 连接成功: ${JSON.stringify(data)}`, 'success', 'connection-log');
+                    showResult('connection-results', true, `连接成功 (${responseTime}ms)`);
+                    diagnosticData.connectionTests.basic = { success: true, responseTime, data };
+                } else {
+                    log(`❌ 连接失败: HTTP ${response.status}`, 'error', 'connection-log');
+                    showResult('connection-results', false, `连接失败: HTTP ${response.status}`);
+                    diagnosticData.connectionTests.basic = { success: false, status: response.status };
+                }
+                
+            } catch (error) {
+                log(`❌ 网络错误: ${error.message}`, 'error', 'connection-log');
+                showResult('connection-results', false, `网络错误: ${error.message}`);
+                diagnosticData.connectionTests.basic = { success: false, error: error.message };
+            }
+        }
+
+        // CORS测试
+        async function testCORS() {
+            log('🔄 开始CORS测试...', 'info', 'connection-log');
+            
+            try {
+                const apiUrl = getApiBaseUrl();
+                
+                // 发送OPTIONS预检请求
+                const optionsResponse = await fetch(`${apiUrl}/api/market`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': window.location.origin,
+                        'Access-Control-Request-Method': 'GET',
+                        'Access-Control-Request-Headers': 'Content-Type'
+                    }
+                });
+                
+                log(`📋 OPTIONS响应: ${optionsResponse.status}`, 'info', 'connection-log');
+                
+                // 检查CORS头
+                const corsHeaders = {
+                    'Access-Control-Allow-Origin': optionsResponse.headers.get('Access-Control-Allow-Origin'),
+                    'Access-Control-Allow-Methods': optionsResponse.headers.get('Access-Control-Allow-Methods'),
+                    'Access-Control-Allow-Headers': optionsResponse.headers.get('Access-Control-Allow-Headers')
+                };
+                
+                log(`🔧 CORS头信息: ${JSON.stringify(corsHeaders)}`, 'info', 'connection-log');
+                
+                // 实际GET请求测试
+                const getResponse = await fetch(`${apiUrl}/api/market`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (getResponse.ok) {
+                    log('✅ CORS配置正常', 'success', 'connection-log');
+                    diagnosticData.connectionTests.cors = { success: true, headers: corsHeaders };
+                } else {
+                    log(`❌ CORS测试失败: ${getResponse.status}`, 'error', 'connection-log');
+                    diagnosticData.connectionTests.cors = { success: false, status: getResponse.status };
+                }
+                
+            } catch (error) {
+                log(`❌ CORS测试错误: ${error.message}`, 'error', 'connection-log');
+                diagnosticData.connectionTests.cors = { success: false, error: error.message };
+            }
+        }
+
+        // DNS解析测试
+        async function testDNS() {
+            log('🔄 开始DNS解析测试...', 'info', 'connection-log');
+            
+            try {
+                const hostname = window.location.hostname;
+                log(`🌐 当前主机名: ${hostname}`, 'info', 'connection-log');
+                
+                if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                    log('📍 本地环境，跳过DNS测试', 'info', 'connection-log');
+                    return;
+                }
+                
+                // 尝试解析主机名
+                const startTime = Date.now();
+                const response = await fetch(`http://${hostname}:3000/api/health`, {
+                    method: 'HEAD',
+                    cache: 'no-cache'
+                });
+                const endTime = Date.now();
+                
+                log(`⏱️ DNS解析时间: ${endTime - startTime}ms`, 'info', 'connection-log');
+                log('✅ DNS解析正常', 'success', 'connection-log');
+                
+            } catch (error) {
+                log(`❌ DNS解析失败: ${error.message}`, 'error', 'connection-log');
+            }
+        }
+
+        // 市场API测试
+        async function testMarketAPI() {
+            log('🔄 测试市场API...', 'info', 'api-log');
+            
+            try {
+                const apiUrl = getApiBaseUrl();
+                const response = await fetch(`${apiUrl}/api/market`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const itemCount = data.data ? data.data.length : 0;
+                    log(`✅ 市场API成功: 获取到 ${itemCount} 个商品`, 'success', 'api-log');
+                    showResult('api-results', true, `市场API正常 (${itemCount}个商品)`);
+                    diagnosticData.apiTests.market = { success: true, itemCount, data: data.data };
+                } else {
+                    log(`❌ 市场API失败: ${response.status}`, 'error', 'api-log');
+                    showResult('api-results', false, `市场API失败: ${response.status}`);
+                    diagnosticData.apiTests.market = { success: false, status: response.status };
+                }
+                
+            } catch (error) {
+                log(`❌ 市场API错误: ${error.message}`, 'error', 'api-log');
+                showResult('api-results', false, `市场API错误: ${error.message}`);
+                diagnosticData.apiTests.market = { success: false, error: error.message };
+            }
+        }
+
+        // 公告API测试
+        async function testAnnouncementsAPI() {
+            log('🔄 测试公告API...', 'info', 'api-log');
+            
+            try {
+                const apiUrl = getApiBaseUrl();
+                const response = await fetch(`${apiUrl}/api/announcements`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const announcementCount = data.data ? data.data.length : 0;
+                    log(`✅ 公告API成功: 获取到 ${announcementCount} 条公告`, 'success', 'api-log');
+                    diagnosticData.apiTests.announcements = { success: true, announcementCount, data: data.data };
+                } else {
+                    log(`❌ 公告API失败: ${response.status}`, 'error', 'api-log');
+                    diagnosticData.apiTests.announcements = { success: false, status: response.status };
+                }
+                
+            } catch (error) {
+                log(`❌ 公告API错误: ${error.message}`, 'error', 'api-log');
+                diagnosticData.apiTests.announcements = { success: false, error: error.message };
+            }
+        }
+
+        // 建议API测试
+        async function testSuggestionsAPI() {
+            log('🔄 测试建议API...', 'info', 'api-log');
+            
+            try {
+                const apiUrl = getApiBaseUrl();
+                const response = await fetch(`${apiUrl}/api/suggestions`, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    const suggestionCount = data.data ? data.data.length : 0;
+                    log(`✅ 建议API成功: 获取到 ${suggestionCount} 条建议`, 'success', 'api-log');
+                    diagnosticData.apiTests.suggestions = { success: true, suggestionCount, data: data.data };
+                } else {
+                    log(`❌ 建议API失败: ${response.status}`, 'error', 'api-log');
+                    diagnosticData.apiTests.suggestions = { success: false, status: response.status };
+                }
+                
+            } catch (error) {
+                log(`❌ 建议API错误: ${error.message}`, 'error', 'api-log');
+                diagnosticData.apiTests.suggestions = { success: false, error: error.message };
+            }
+        }
+
+        // 全部API测试
+        async function testAllAPIs() {
+            log('🔄 开始全部API测试...', 'info', 'api-log');
+            
+            await testMarketAPI();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await testAnnouncementsAPI();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            await testSuggestionsAPI();
+            
+            log('✅ 全部API测试完成', 'success', 'api-log');
+        }
+
+        // 完整诊断
+        async function runFullDiagnostic() {
+            log('🚀 开始完整诊断...', 'info', 'diagnostic-log');
+            
+            // 清空之前的数据
+            diagnosticData = {
+                deviceInfo: {},
+                connectionTests: {},
+                apiTests: {},
+                errors: []
+            };
+            
+            // 设备信息
+            showDeviceInfo();
+            
+            // 连接测试
+            await testBasicConnection();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testCORS();
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testDNS();
+            
+            // API测试
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            await testAllAPIs();
+            
+            log('🎉 完整诊断完成！', 'success', 'diagnostic-log');
+            
+            // 生成诊断报告
+            generateDiagnosticReport();
+        }
+
+        // 生成诊断报告
+        function generateDiagnosticReport() {
+            const report = {
+                timestamp: new Date().toISOString(),
+                summary: {
+                    basicConnection: diagnosticData.connectionTests.basic?.success || false,
+                    corsTest: diagnosticData.connectionTests.cors?.success || false,
+                    marketAPI: diagnosticData.apiTests.market?.success || false,
+                    announcementsAPI: diagnosticData.apiTests.announcements?.success || false,
+                    suggestionsAPI: diagnosticData.apiTests.suggestions?.success || false
+                },
+                details: diagnosticData
+            };
+            
+            log(`📋 诊断报告: ${JSON.stringify(report, null, 2)}`, 'info', 'diagnostic-log');
+        }
+
+        // 清空所有日志
+        function clearAllLogs() {
+            document.getElementById('connection-log').innerHTML = '';
+            document.getElementById('api-log').innerHTML = '';
+            document.getElementById('diagnostic-log').innerHTML = '';
+            document.getElementById('connection-results').innerHTML = '';
+            document.getElementById('api-results').innerHTML = '';
+            
+            diagnosticData = {
+                deviceInfo: {},
+                connectionTests: {},
+                apiTests: {},
+                errors: []
+            };
+            
+            log('🧹 所有日志已清空', 'info', 'diagnostic-log');
+        }
+
+        // 导出日志
+        function exportLogs() {
+            const exportData = {
+                timestamp: new Date().toISOString(),
+                diagnosticData,
+                logs: diagnosticData.errors
+            };
+            
+            const dataStr = JSON.stringify(exportData, null, 2);
+            const dataBlob = new Blob([dataStr], {type: 'application/json'});
+            const url = URL.createObjectURL(dataBlob);
+            
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `mobile-diagnostic-${Date.now()}.json`;
+            link.click();
+            
+            URL.revokeObjectURL(url);
+            log('📤 诊断日志已导出', 'success', 'diagnostic-log');
+        }
+
+        // 页面加载时初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            showDeviceInfo();
+            log('🔧 移动端网络诊断工具已就绪', 'info', 'diagnostic-log');
+        });
+
+        // 网络状态监听
+        window.addEventListener('online', function() {
+            log('🌐 网络已连接', 'success', 'diagnostic-log');
+        });
+
+        window.addEventListener('offline', function() {
+            log('📵 网络已断开', 'error', 'diagnostic-log');
+        });
+    </script>
+</body>
+</html> 

@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useContext, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Suggestion, SuggestionStatus, UserRole } from '../types';
-import { getSuggestions, addSuggestion, updateSuggestionStatus, addSuggestionProgress, addSuggestionComment, toggleSuggestionLike } from '../services/apiService';
+import { getSuggestions, getSuggestion, addSuggestion, updateSuggestionStatus, addSuggestionProgress, addSuggestionComment, toggleSuggestionLike } from '../services/apiService';
 import { Button, LoadingSpinner, Badge, Modal, Textarea, Select } from '../components/UIElements';
-import { PlusCircleIcon, ChevronDownIcon, ChatBubbleLeftEllipsisIcon, LightbulbIcon, ArrowPathIcon, HandThumbUpIcon, ChatBubbleLeftIcon } from '../components/Icons';
+import { PlusCircleIcon, ChevronDownIcon, ChatBubbleLeftEllipsisIcon, LightbulbIcon, ArrowPathIcon, HandThumbUpIcon, ChatBubbleLeftIcon, CheckBadgeIcon } from '../components/Icons';
 import SuggestionForm from '../components/SuggestionForm';
+import ShareButton from '../components/ShareButton';
 import { AuthContext, useAuth } from '../contexts/AuthContext';
 
 const SuggestionItem: React.FC<{ 
@@ -78,7 +80,17 @@ const SuggestionItem: React.FC<{
       <div className="flex justify-between items-start">
         <div>
           <h3 className="text-xl font-semibold text-slate-800 mb-1">{suggestion.title}</h3>
-          <p className="text-sm text-slate-500">由 {suggestion.submittedBy} 于 {new Date(suggestion.submittedDate).toLocaleDateString()} 提交</p>
+          <div className="flex items-center space-x-2">
+            <p className="text-sm text-slate-500">
+              由 {suggestion.submittedBy}
+              {suggestion.submittedByUserVerified && (
+                <span className="inline-flex items-center ml-1 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded" title="已认证用户">
+                  ✓ 已认证
+                </span>
+              )}
+              于 {new Date(suggestion.submittedDate).toLocaleDateString()} 提交
+            </p>
+          </div>
           <p className="text-sm text-slate-500">类别: {suggestion.category}</p>
         </div>
         <Badge color={getStatusColor(suggestion.status)}>{suggestion.status}</Badge>
@@ -200,6 +212,17 @@ const SuggestionItem: React.FC<{
             添加评论
           </Button>
         )}
+
+        {/* 分享按钮 */}
+        <ShareButton
+          itemId={suggestion.id}
+          itemType="suggestion"
+          title={suggestion.title}
+          size="sm"
+          variant="outline"
+          className="text-xs sm:text-sm px-2 sm:px-3 py-1"
+        />
+
         {!auth?.currentUser && (
           <Button
             variant="outline"
@@ -222,9 +245,15 @@ const SuggestionItem: React.FC<{
                 {suggestion.comments.map((comment) => (
                   <div key={comment.id} className="bg-blue-50 p-3 rounded-md">
                     <p className="text-sm text-slate-700 whitespace-pre-wrap">{comment.content}</p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {comment.userName} - {new Date(comment.createdAt).toLocaleString()}
-                    </p>
+                    <div className="flex items-center space-x-1 text-xs text-slate-500 mt-1">
+                      <span>{comment.userName}</span>
+                      {comment.userVerified && (
+                        <span className="inline-flex items-center ml-1 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded" title="已认证用户">
+                          ✓ 已认证
+                        </span>
+                      )}
+                      <span>- {new Date(comment.createdAt).toLocaleString()}</span>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -259,7 +288,10 @@ const SuggestionItem: React.FC<{
 };
 
 const SuggestionsPage: React.FC = () => {
+  const { id: suggestionId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const [selectedSuggestion, setSelectedSuggestion] = useState<Suggestion | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDataLoading, setIsDataLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -283,6 +315,11 @@ const SuggestionsPage: React.FC = () => {
     setError(null);
     try {
       const data = await getSuggestions();
+      console.log('建议数据:', data.map(s => ({
+        title: s.title,
+        submittedBy: s.submittedBy,
+        submittedByUserVerified: s.submittedByUserVerified
+      })));
       setSuggestions(data);
       setLastUpdated(new Date());
     } catch (err) {
@@ -294,12 +331,35 @@ const SuggestionsPage: React.FC = () => {
     }
   }, []);
 
+  // 处理分享链接 - 如果URL中有suggestionId，则获取并显示该建议详情
   useEffect(() => {
-    if (!isLoadingAuth) {
+    const handleSharedSuggestion = async () => {
+      if (suggestionId && !isLoadingAuth) {
+        try {
+          setIsLoading(true);
+          const suggestion = await getSuggestion(suggestionId);
+          setSelectedSuggestion(suggestion);
+          // 同时加载所有建议列表
+          await fetchSuggestionsData(false);
+          setupAutoRefresh();
+        } catch (error) {
+          console.error('获取分享建议失败:', error);
+          setError('建议不存在或已被删除');
+          // 如果建议不存在，导航到建议页面
+          navigate('/suggestions', { replace: true });
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    if (suggestionId) {
+      handleSharedSuggestion();
+    } else if (!isLoadingAuth) {
       fetchSuggestionsData();
       setupAutoRefresh();
     }
-  }, [isLoadingAuth, fetchSuggestionsData]);
+  }, [suggestionId, isLoadingAuth, fetchSuggestionsData, navigate]);
 
   const handleManualRefresh = useCallback(() => {
     fetchSuggestionsData(true);

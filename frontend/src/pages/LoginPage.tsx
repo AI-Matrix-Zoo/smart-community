@@ -61,7 +61,7 @@ const LoginPage: React.FC = () => {
           </h2>
           <p className="mt-2 text-center text-sm text-slate-600">
             欢迎回来！请使用您的姓名和密码登录
-          </p>
+            </p>
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <Input

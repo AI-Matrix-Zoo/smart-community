@@ -116,19 +116,28 @@ check_port() {
 free_port() {
     local port=$1
     local pids=""
+    
+    log_info "检查端口 $port 占用情况..."
+    
+    # 使用timeout防止lsof挂起，并添加错误处理
     if command -v lsof &>/dev/null; then
-        pids=$(lsof -ti tcp:$port)
+        pids=$(timeout 5 lsof -ti tcp:$port 2>/dev/null || true)
     elif command -v netstat &>/dev/null; then
-        pids=$(netstat -tlnp 2>/dev/null | grep :$port | awk '{print $7}' | cut -d'/' -f1)
+        pids=$(timeout 5 netstat -tlnp 2>/dev/null | grep :$port | awk '{print $7}' | cut -d'/' -f1 || true)
     fi
+    
     if [ -n "$pids" ]; then
         log_warning "端口 $port 被占用，自动释放..."
         for pid in $pids; do
-            if [ "$pid" != "-" ]; then
-                kill -9 $pid 2>/dev/null && log_success "已终止进程 $pid (端口:$port)"
+            if [ "$pid" != "-" ] && [ -n "$pid" ]; then
+                if kill -0 $pid 2>/dev/null; then
+                    kill -9 $pid 2>/dev/null && log_success "已终止进程 $pid (端口:$port)"
+                fi
             fi
         done
         sleep 1
+    else
+        log_info "端口 $port 未被占用"
     fi
 }
 
@@ -537,9 +546,9 @@ build_project() {
 deploy_production() {
     log_header "生产环境部署"
     
-    # 启动前自动释放端口
-    free_port $PROD_PORT_BACKEND
-
+    # 首先停止所有现有服务
+    stop_production
+    
     # 构建项目
     build_project
 
@@ -552,51 +561,97 @@ deploy_production() {
     # 创建logs目录
     mkdir -p logs
     
-    # 停止现有的生产服务
-    if [ -f ".production.pid" ]; then
-        OLD_PID=$(cat .production.pid)
-        if kill -0 $OLD_PID 2>/dev/null; then
-            kill $OLD_PID
-            sleep 2
-        fi
-        rm -f .production.pid
-    fi
-
     log_info "启动生产环境后端服务..."
     cd $BACKEND_DIR
-    LOG_FILE="../logs/backend-$(date +%Y%m%d-%H%M%S).log"
-    nohup env NODE_ENV=production node dist/index.js > "$LOG_FILE" 2>&1 &
-    PROD_PID=$!
+    
+    # 使用我们的生产环境启动脚本
+    if [ -f "start-production.sh" ]; then
+        log_info "使用生产环境启动脚本..."
+        nohup ./start-production.sh > "../logs/backend-$(date +%Y%m%d-%H%M%S).log" 2>&1 &
+        PROD_PID=$!
+    else
+        log_warning "未找到start-production.sh，使用默认启动方式..."
+        LOG_FILE="../logs/backend-$(date +%Y%m%d-%H%M%S).log"
+        nohup env NODE_ENV=production PORT=$PROD_PORT_BACKEND node dist/index.js > "$LOG_FILE" 2>&1 &
+        PROD_PID=$!
+    fi
+    
     cd ..
 
     log_success "生产环境部署完成！"
     log_info "服务PID: $PROD_PID"
     log_info "前端地址: http://localhost:$PROD_PORT_FRONTEND"
     log_info "后端地址: http://localhost:$PROD_PORT_BACKEND"
-    log_info "日志文件: $LOG_FILE"
 
     # 保存PID到文件
     echo $PROD_PID > .production.pid
     log_info "PID已保存到 .production.pid"
+    
+    # 等待服务启动并验证（改进的健康检查）
+    log_info "等待后端服务启动..."
+    local retry_count=0
+    local max_retries=10
+    local health_check_passed=false
+    
+    while [ $retry_count -lt $max_retries ]; do
+        sleep 2
+        if curl -s http://localhost:$PROD_PORT_BACKEND/health >/dev/null 2>&1; then
+            health_check_passed=true
+            break
+        fi
+        retry_count=$((retry_count + 1))
+        log_info "健康检查重试 $retry_count/$max_retries..."
+    done
+    
+    if [ "$health_check_passed" = true ]; then
+        log_success "后端服务健康检查通过"
+        log_info "服务访问地址："
+        log_info "  健康检查: http://localhost:$PROD_PORT_BACKEND/health"
+        log_info "  API接口: http://localhost:$PROD_PORT_BACKEND/api"
+    else
+        log_warning "后端服务健康检查失败，但进程可能仍在启动中"
+        log_info "请稍后手动检查: curl http://localhost:$PROD_PORT_BACKEND/health"
+    fi
 }
 
 # 停止生产服务
 stop_production() {
     log_header "停止生产服务"
     
+    # 首先尝试停止PM2管理的进程
+    if command -v pm2 >/dev/null 2>&1; then
+        log_info "停止PM2管理的进程..."
+        pm2 stop smart-community-backend 2>/dev/null || true
+        pm2 delete smart-community-backend 2>/dev/null || true
+        pm2 stop smart-community-frontend 2>/dev/null || true
+        pm2 delete smart-community-frontend 2>/dev/null || true
+        pm2 stop all 2>/dev/null || true
+        pm2 delete all 2>/dev/null || true
+        log_success "PM2进程清理完成"
+    fi
+    
+    # 停止通过PID文件管理的进程
     if [ -f ".production.pid" ]; then
         PID=$(cat .production.pid)
         if kill -0 $PID 2>/dev/null; then
             kill $PID
             rm .production.pid
-            log_success "生产服务已停止"
+            log_success "生产服务已停止 (PID: $PID)"
         else
             log_warning "进程 $PID 不存在"
             rm .production.pid
         fi
-    else
-        log_warning "未找到生产服务PID文件"
     fi
+    
+    # 强制释放端口（确保彻底清理）
+    free_port $PROD_PORT_BACKEND
+    free_port $PROD_PORT_FRONTEND
+    
+    # 停止所有smart-community相关进程
+    log_info "清理所有smart-community相关进程..."
+    pkill -f "smart-community" 2>/dev/null || true
+    
+    log_success "所有生产服务已停止"
 }
 
 # 查看状态
@@ -647,6 +702,14 @@ show_status() {
     
     # 检查生产服务状态
     log_info "生产环境状态："
+    
+    # 检查PM2管理的进程
+    if command -v pm2 >/dev/null 2>&1; then
+        log_info "PM2进程状态："
+        pm2 list 2>/dev/null || log_info "  无PM2进程运行"
+    fi
+    
+    # 检查PID文件管理的进程
     if [ -f ".production.pid" ]; then
         PID=$(cat .production.pid)
         if kill -0 $PID 2>/dev/null; then
@@ -654,8 +717,21 @@ show_status() {
         else
             log_warning "生产服务: 已停止 (PID文件存在但进程不存在)"
         fi
+    fi
+    
+    # 检查端口占用情况
+    if lsof -Pi :$PROD_PORT_BACKEND -sTCP:LISTEN -t >/dev/null 2>&1; then
+        local prod_backend_pid=$(lsof -Pi :$PROD_PORT_BACKEND -sTCP:LISTEN -t)
+        log_success "生产后端端口 $PROD_PORT_BACKEND: 被进程 $prod_backend_pid 占用"
     else
-        log_info "生产服务: 未启动"
+        log_info "生产后端端口 $PROD_PORT_BACKEND: 空闲"
+    fi
+    
+    if lsof -Pi :$PROD_PORT_FRONTEND -sTCP:LISTEN -t >/dev/null 2>&1; then
+        local prod_frontend_pid=$(lsof -Pi :$PROD_PORT_FRONTEND -sTCP:LISTEN -t)
+        log_success "生产前端端口 $PROD_PORT_FRONTEND: 被进程 $prod_frontend_pid 占用"
+    else
+        log_info "生产前端端口 $PROD_PORT_FRONTEND: 空闲"
     fi
 }
 

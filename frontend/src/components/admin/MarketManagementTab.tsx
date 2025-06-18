@@ -2,13 +2,17 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { getMarketItems, adminDeleteMarketItem } from '../../services/apiService';
 import { MarketItem } from '../../types';
 import { Button, LoadingSpinner, Badge, Modal } from '../UIElements';
-import { TrashIcon, ShoppingBagIcon } from '../Icons';
+import { TrashIcon, ShoppingBagIcon, CheckBadgeIcon } from '../Icons';
+import ImageViewer from '../ImageViewer';
+import { buildImageUrl } from '../../utils/imageUtils';
 
 const MarketManagementTab: React.FC = () => {
   const [items, setItems] = useState<MarketItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [itemToView, setItemToView] = useState<MarketItem | null>(null);
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
   const fetchItems = useCallback(async () => {
     setIsLoading(true);
@@ -69,12 +73,21 @@ const MarketManagementTab: React.FC = () => {
           <tbody className="bg-white divide-y divide-slate-200">
             {items.map((item) => (
               <tr key={item.id} className="hover:bg-slate-50 transition-colors">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <img src={item.imageUrl} alt={item.title} className="w-16 h-16 object-cover rounded-md"/>
-                </td>
+                              <td className="px-6 py-4 whitespace-nowrap">
+                <img src={buildImageUrl(item.imageUrl)} alt={item.title} className="w-16 h-16 object-cover rounded-md"/>
+              </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900 max-w-xs truncate" title={item.title}>{item.title}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">¥{item.price.toFixed(2)}</td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{item.seller}</td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                  <div className="flex items-center space-x-1">
+                    <span>{item.seller}</span>
+                    {item.sellerVerified && (
+                      <span title="已认证用户">
+                        <CheckBadgeIcon className="w-4 h-4 text-blue-500" />
+                      </span>
+                    )}
+                  </div>
+                </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{new Date(item.postedDate).toLocaleDateString()}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                   <Button variant="ghost" size="sm" onClick={() => setItemToView(item)} className="mr-2 text-blue-600 hover:text-blue-800">
@@ -94,7 +107,13 @@ const MarketManagementTab: React.FC = () => {
       {itemToView && (
          <Modal isOpen={!!itemToView} onClose={() => setItemToView(null)} title={itemToView.title} size="md">
             <div className="space-y-4">
-                <img src={itemToView.imageUrl} alt={itemToView.title} className="w-full h-64 object-cover rounded-lg shadow-md" />
+                <img 
+                  src={buildImageUrl(itemToView.imageUrl)} 
+                  alt={itemToView.title} 
+                  className="w-full h-64 object-cover rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity" 
+                  onClick={() => setShowImageViewer(true)}
+                  title="点击查看大图"
+                />
                 <div>
                 <p className="text-3xl font-bold text-secondary mb-2">¥{itemToView.price.toFixed(2)}</p>
                 <Badge color="slate" className="mb-3">{itemToView.category}</Badge>
@@ -104,7 +123,15 @@ const MarketManagementTab: React.FC = () => {
                     <p className="text-slate-600 whitespace-pre-wrap">{itemToView.description}</p>
                 </div>
                 <div className="text-sm text-slate-600 space-y-1 border-t pt-4 mt-4">
-                    <p><span className="font-semibold">卖家:</span> {itemToView.seller}</p>
+                    <div className="flex items-center space-x-1">
+                      <span className="font-semibold">卖家:</span> 
+                      <span>{itemToView.seller}</span>
+                      {itemToView.sellerVerified && (
+                        <span title="已认证用户">
+                          <CheckBadgeIcon className="w-4 h-4 text-blue-500" />
+                        </span>
+                      )}
+                    </div>
                     <p><span className="font-semibold">发布日期:</span> {new Date(itemToView.postedDate).toLocaleDateString()}</p>
                     {itemToView.contactInfo && <p><span className="font-semibold">联系方式:</span> {itemToView.contactInfo}</p>}
                 </div>
@@ -112,6 +139,16 @@ const MarketManagementTab: React.FC = () => {
                 <Button variant="primary" onClick={() => setItemToView(null)}>关闭</Button>
                 </div>
             </div>
+
+            {/* 图片查看器 */}
+            <ImageViewer
+              images={[buildImageUrl(itemToView.imageUrl)].filter(Boolean)}
+              currentIndex={currentImageIndex}
+              isOpen={showImageViewer}
+              onClose={() => setShowImageViewer(false)}
+              onIndexChange={setCurrentImageIndex}
+              title={itemToView.title}
+            />
         </Modal>
       )}
     </div>

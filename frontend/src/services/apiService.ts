@@ -9,26 +9,13 @@ import {
 
 // 根据环境自动切换API地址
 const getApiBaseUrl = (): string => {
-  // 在开发环境中，根据当前访问的主机名确定API地址
+  // 在开发环境中，使用localhost
   if (import.meta.env.DEV) {
-    const currentHost = window.location.hostname;
-    
-    // 如果是通过IP地址访问，使用相同的IP地址访问后端
-    if (currentHost !== 'localhost' && currentHost !== '127.0.0.1') {
-      return `http://${currentHost}:3001/api`;  // 开发环境使用3001端口
-    }
-    
-    // 默认使用localhost:3001（开发环境端口）
     return 'http://localhost:3001/api';
   }
   
-  // 在生产环境中，优先使用环境变量
-  if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
-  }
-  
-  // 生产环境默认使用端口3000
-  return 'http://localhost:3000/api';
+  // 生产环境使用相对路径
+  return '/api';
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -40,18 +27,21 @@ interface ApiResponse<T> {
   message?: string;
 }
 
-// 获取认证令牌
+// 获取认证令牌 - 统一使用 'token'
 const getAuthToken = (): string | null => {
-  return localStorage.getItem('auth_token');
+  return localStorage.getItem('token') || localStorage.getItem('auth_token');
 };
 
-// 设置认证令牌
+// 设置认证令牌 - 统一使用 'token'
 const setAuthToken = (token: string): void => {
-  localStorage.setItem('auth_token', token);
+  localStorage.setItem('token', token);
+  // 清理旧的token
+  localStorage.removeItem('auth_token');
 };
 
 // 移除认证令牌
 const removeAuthToken = (): void => {
+  localStorage.removeItem('token');
   localStorage.removeItem('auth_token');
 };
 
@@ -172,12 +162,52 @@ export const getMarketItems = async (): Promise<MarketItem[]> => {
   }
 };
 
-export const addMarketItem = async (itemData: Omit<MarketItem, 'id' | 'postedDate'>): Promise<MarketItem> => {
+export const getMarketItem = async (itemId: string): Promise<MarketItem> => {
   try {
-    return await apiRequest<MarketItem>('/market', {
+    return await apiRequest<MarketItem>(`/market/${itemId}`);
+  } catch (error) {
+    console.error('获取市场物品详情失败:', error);
+    throw error;
+  }
+};
+
+export const addMarketItem = async (itemData: Omit<MarketItem, 'id' | 'postedDate'>, files?: File[]): Promise<MarketItem> => {
+  try {
+    const formData = new FormData();
+    
+    // 添加文本字段
+    formData.append('title', itemData.title);
+    formData.append('description', itemData.description);
+    formData.append('price', itemData.price.toString());
+    formData.append('category', itemData.category);
+    if (itemData.contactInfo) {
+      formData.append('contactInfo', itemData.contactInfo);
+    }
+    
+    // 添加图片文件
+    if (files && files.length > 0) {
+      files.forEach((file, index) => {
+        formData.append('images', file);
+      });
+    }
+
+    const token = getAuthToken();
+    const response = await fetch(`${API_BASE_URL}/market`, {
       method: 'POST',
-      body: JSON.stringify(itemData),
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        // 不设置Content-Type，让浏览器自动设置multipart/form-data
+      },
+      body: formData,
     });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || '添加市场物品失败');
+    }
+
+    const result = await response.json();
+    return result.data;
   } catch (error) {
     console.error('添加市场物品失败:', error);
     throw error;
@@ -234,6 +264,15 @@ export const getSuggestions = async (): Promise<Suggestion[]> => {
     return await apiRequest<Suggestion[]>('/suggestions');
   } catch (error) {
     console.error('获取建议列表失败:', error);
+    throw error;
+  }
+};
+
+export const getSuggestion = async (suggestionId: string): Promise<Suggestion> => {
+  try {
+    return await apiRequest<Suggestion>(`/suggestions/${suggestionId}`);
+  } catch (error) {
+    console.error('获取建议详情失败:', error);
     throw error;
   }
 };
@@ -399,6 +438,46 @@ export const adminDeleteSuggestion = async (suggestionId: string): Promise<boole
     return true;
   } catch (error) {
     console.error('删除建议失败:', error);
+    return false;
+  }
+};
+
+// 认证用户（管理员）
+export const adminVerifyUser = async (userId: string): Promise<boolean> => {
+  try {
+    await apiRequest(`/admin/users/${userId}/verify`, {
+      method: 'POST',
+    });
+    return true;
+  } catch (error) {
+    console.error('认证用户失败:', error);
+    return false;
+  }
+};
+
+// 取消用户认证（管理员）
+export const adminUnverifyUser = async (userId: string): Promise<boolean> => {
+  try {
+    await apiRequest(`/admin/users/${userId}/unverify`, {
+      method: 'POST',
+    });
+    return true;
+  } catch (error) {
+    console.error('取消认证失败:', error);
+    return false;
+  }
+};
+
+// 修改用户密码（管理员）
+export const adminResetUserPassword = async (userId: string, newPassword: string): Promise<boolean> => {
+  try {
+    await apiRequest(`/admin/users/${userId}/reset-password`, {
+      method: 'POST',
+      body: JSON.stringify({ newPassword }),
+    });
+    return true;
+  } catch (error) {
+    console.error('修改用户密码失败:', error);
     return false;
   }
 };

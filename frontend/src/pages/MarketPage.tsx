@@ -1,187 +1,95 @@
-import React, { useState, useEffect, useCallback, useContext, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { MarketItem } from '../types';
-import { getMarketItems, addMarketItem, addMarketItemComment, toggleMarketItemLike } from '../services/apiService';
-import { Button, LoadingSpinner, Badge, Modal, Textarea } from '../components/UIElements';
-import { PlusCircleIcon, ChevronDownIcon, ChatBubbleLeftEllipsisIcon, ShoppingBagIcon, ArrowPathIcon, HandThumbUpIcon, ChatBubbleLeftIcon } from '../components/Icons';
+import { getMarketItems, getMarketItem, addMarketItem, addMarketItemComment, toggleMarketItemLike } from '../services/apiService';
+import { Button, LoadingSpinner, Badge, Modal } from '../components/UIElements';
+import { PlusCircleIcon, ShoppingBagIcon } from '../components/Icons';
 import MarketItemForm from '../components/MarketItemForm';
 import MyItemsModal from '../components/MyItemsModal';
-import { AuthContext, useAuth } from '../contexts/AuthContext';
+import ImageViewer from '../components/ImageViewer';
+import ShareButton from '../components/ShareButton';
+import MarketItemCard from '../components/MarketItemCard';
+import { useAuth } from '../contexts/AuthContext';
+import { getItemImages } from '../utils/imageUtils';
 
-const MarketItemCard: React.FC<{ 
-    item: MarketItem; 
-    onAddComment: (id: string, content: string) => void;
-    onToggleLike: (id: string) => void;
-}> = ({ item, onAddComment, onToggleLike }) => {
-  const auth = useContext(AuthContext);
-  const [expanded, setExpanded] = useState(false);
-  const [showCommentModal, setShowCommentModal] = useState(false);
-  const [commentText, setCommentText] = useState('');
 
-  const handleCommentSubmit = () => {
-    if (!commentText.trim()) {
-      alert("请输入评论内容。");
-      return;
-    }
-    onAddComment(item.id, commentText);
-    setShowCommentModal(false);
-    setCommentText('');
-  };
 
-  const handleLikeClick = () => {
-    if (!auth?.currentUser) {
-      window.location.href = '/login';
-      return;
-    }
-    onToggleLike(item.id);
-  };
-
-  return (
-    <div className="bg-white shadow-lg rounded-xl p-6 transition-shadow duration-300 hover:shadow-xl">
-      <div className="flex justify-between items-start">
-        <div className="flex-1">
-          <h3 className="text-xl font-semibold text-slate-800 mb-1">{item.title}</h3>
-          <p className="text-sm text-slate-500">由 {item.seller} 于 {new Date(item.postedDate).toLocaleDateString()} 发布</p>
-          <p className="text-sm text-slate-500">类别: {item.category}</p>
-        </div>
-        <div className="text-right">
-          <p className="text-2xl font-bold text-secondary mb-2">¥{item.price.toFixed(2)}</p>
-          <Badge color="slate">{item.category}</Badge>
-        </div>
-      </div>
-      
-      {item.imageUrl && (
-        <div className="mt-4 mb-4">
-          <img src={item.imageUrl} alt={item.title} className="w-full h-48 object-cover rounded-lg shadow-md" />
-        </div>
-      )}
-      
-      <p className="text-slate-700 mt-3 mb-4 whitespace-pre-wrap">{item.description}</p>
-      
-      {item.contactInfo && (
-        <div className="bg-blue-50 p-3 rounded-md mb-4">
-          <p className="text-sm text-slate-700">
-            <span className="font-semibold">联系方式:</span> {item.contactInfo}
-          </p>
-        </div>
-      )}
-      
-      <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
-        <div />
-        <Button 
-            size="sm" 
-            variant="ghost" 
-            onClick={() => setExpanded(!expanded)} 
-            rightIcon={<ChevronDownIcon className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />}
-            className="text-xs"
-        >
-            {expanded ? '收起评论' : '查看评论'} ({item.comments?.length || 0})
-        </Button>
-      </div>
-
-      {expanded && (
-        <div className="mt-4 pt-4 border-t border-slate-100 space-y-4">
-          {/* 评论区 */}
-          {item.comments && item.comments.length > 0 && (
-            <div>
-              <h4 className="font-medium text-slate-700 mb-2">用户评论</h4>
-              <div className="space-y-2">
-                {item.comments.map((comment) => (
-                  <div key={comment.id} className="bg-blue-50 p-3 rounded-md">
-                    <p className="text-sm text-slate-700 whitespace-pre-wrap">{comment.content}</p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      {comment.userName} - {new Date(comment.createdAt).toLocaleString()}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {(!item.comments || item.comments.length === 0) && (
-            <p className="text-sm text-slate-500 italic">暂无评论。</p>
-          )}
-        </div>
-      )}
-
-      {/* 点赞和评论统计 */}
-      <div className="flex flex-wrap items-center gap-2 sm:gap-4 pt-3 border-t border-slate-100">
-        <button
-          onClick={handleLikeClick}
-          className={`flex items-center space-x-1 px-2 sm:px-3 py-1 rounded-md text-xs sm:text-sm transition-colors ${
-            item.isLikedByCurrentUser 
-              ? 'bg-red-100 text-red-700 hover:bg-red-200' 
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-          }`}
-        >
-          <HandThumbUpIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-          <span>{item.likeCount || 0}</span>
-        </button>
-        
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="flex items-center space-x-1 px-2 sm:px-3 py-1 rounded-md text-xs sm:text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
-        >
-          <ChatBubbleLeftIcon className="w-3 h-3 sm:w-4 sm:h-4" />
-          <span>{item.comments?.length || 0} 评论</span>
-        </button>
-
-        <button
-          onClick={() => setExpanded(!expanded)}
-          className="text-xs sm:text-sm text-blue-600 hover:text-blue-800 px-1"
-        >
-          {expanded ? '收起' : '展开详情'}
-        </button>
-
-        {auth?.currentUser && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowCommentModal(true)}
-            className="text-xs sm:text-sm px-2 sm:px-3 py-1"
-          >
-            添加评论
-          </Button>
-        )}
-        {!auth?.currentUser && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => window.location.href = '/login'}
-            className="text-xs sm:text-sm px-2 sm:px-3 py-1"
-          >
-            登录后评论
-          </Button>
-        )}
-      </div>
-
-      {/* 评论模态框 */}
-      <Modal isOpen={showCommentModal} onClose={() => setShowCommentModal(false)} title="添加评论">
-        <div className="space-y-4">
-          <Textarea 
-            label="评论内容"
-            placeholder="请输入您的评论..."
-            value={commentText}
-            onChange={(e) => setCommentText(e.target.value)}
-            required
-            rows={3}
-          />
-          <div className="flex justify-end space-x-2">
-            <Button variant="ghost" onClick={() => setShowCommentModal(false)}>取消</Button>
-            <Button onClick={handleCommentSubmit}>发表评论</Button>
-          </div>
-        </div>
-      </Modal>
-    </div>
-  );
-};
 
 const MarketItemDetailModal: React.FC<{item: MarketItem | null; isOpen: boolean; onClose: () => void;}> = ({ item, isOpen, onClose }) => {
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showImageViewer, setShowImageViewer] = useState(false);
+  
   if (!item) return null;
+
+  // 获取图片数组，使用工具函数构建完整URL
+  const images = getItemImages(item);
+
+  const nextImage = () => {
+    setCurrentImageIndex((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = () => {
+    setCurrentImageIndex((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  // 重置图片索引当模态框打开时
+  React.useEffect(() => {
+    if (isOpen) {
+      setCurrentImageIndex(0);
+    }
+  }, [isOpen]);
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={item.title} size="md">
       <div className="space-y-4">
-        <img src={item.imageUrl} alt={item.title} className="w-full h-64 object-cover rounded-lg shadow-md" />
+        {images.length > 0 && (
+          <div className="relative">
+            <img 
+              src={images[currentImageIndex]} 
+              alt={`${item.title} - 图片 ${currentImageIndex + 1}`} 
+              className="w-full h-64 object-cover rounded-lg shadow-md cursor-pointer hover:opacity-90 transition-opacity" 
+              onClick={() => setShowImageViewer(true)}
+              title="点击查看大图"
+            />
+            
+            {images.length > 1 && (
+              <>
+                {/* 图片导航按钮 */}
+                <button
+                  onClick={prevImage}
+                  className="absolute left-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-70 transition-opacity"
+                >
+                  ‹
+                </button>
+                <button
+                  onClick={nextImage}
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 bg-black bg-opacity-50 text-white rounded-full w-8 h-8 flex items-center justify-center hover:bg-opacity-70 transition-opacity"
+                >
+                  ›
+                </button>
+                
+                {/* 图片指示器 */}
+                <div className="absolute bottom-2 left-1/2 transform -translate-x-1/2 flex space-x-1">
+                  {images.map((_, index) => (
+                    <button
+                      key={index}
+                      onClick={() => setCurrentImageIndex(index)}
+                      className={`w-2 h-2 rounded-full transition-colors ${
+                        index === currentImageIndex ? 'bg-white' : 'bg-white bg-opacity-50'
+                      }`}
+                    />
+                  ))}
+                </div>
+                
+                {/* 图片计数 */}
+                <div className="absolute top-2 right-2 bg-black bg-opacity-50 text-white text-xs px-2 py-1 rounded">
+                  {currentImageIndex + 1}/{images.length}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+        
         <div>
           <p className="text-3xl font-bold text-secondary mb-2">¥{item.price.toFixed(2)}</p>
           <Badge color="slate" className="mb-3">{item.category}</Badge>
@@ -191,19 +99,46 @@ const MarketItemDetailModal: React.FC<{item: MarketItem | null; isOpen: boolean;
             <p className="text-slate-600 whitespace-pre-wrap">{item.description}</p>
         </div>
         <div className="text-sm text-slate-600 space-y-1 border-t pt-4 mt-4">
-            <p><span className="font-semibold">卖家:</span> {item.seller}</p>
+            <div className="flex items-center space-x-1">
+              <span className="font-semibold">卖家:</span> 
+              <span>{item.seller}</span>
+              {item.sellerVerified && (
+                <span className="inline-flex items-center ml-1 px-1.5 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded" title="已认证用户">
+                  ✓ 已认证
+                </span>
+              )}
+            </div>
             <p><span className="font-semibold">发布日期:</span> {new Date(item.postedDate).toLocaleDateString()}</p>
             {item.contactInfo && <p><span className="font-semibold">联系方式:</span> {item.contactInfo}</p>}
         </div>
-        <div className="flex justify-end pt-4">
+        <div className="flex justify-between items-center pt-4">
+          <ShareButton
+            itemId={item.id}
+            itemType="market"
+            title={item.title}
+            size="sm"
+            variant="outline"
+          />
           <Button variant="primary" onClick={onClose}>关闭</Button>
         </div>
       </div>
+
+      {/* 图片查看器 */}
+      <ImageViewer
+        images={images}
+        currentIndex={currentImageIndex}
+        isOpen={showImageViewer}
+        onClose={() => setShowImageViewer(false)}
+        onIndexChange={setCurrentImageIndex}
+        title={item.title}
+      />
     </Modal>
   );
-}
+};
 
 const MarketPage: React.FC = () => {
+  const { id: itemId } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [marketItems, setMarketItems] = useState<MarketItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDataLoading, setIsDataLoading] = useState(false);
@@ -211,6 +146,7 @@ const MarketPage: React.FC = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isMyItemsOpen, setIsMyItemsOpen] = useState(false);
   const [selectedItem, setSelectedItem] = useState<MarketItem | null>(null);
+  const [editingItem, setEditingItem] = useState<MarketItem | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const { currentUser, isLoadingAuth } = useAuth();
@@ -229,24 +165,72 @@ const MarketPage: React.FC = () => {
     }
     setError(null);
     try {
+      console.log('[MarketPage] 开始获取市场物品...');
+      console.log('[MarketPage] API基础地址:', window.location.hostname);
+      console.log('[MarketPage] User Agent:', navigator.userAgent);
+      
       const data = await getMarketItems();
+      
+      console.log('[MarketPage] API响应成功，数据类型:', typeof data);
+      console.log('[MarketPage] 是否为数组:', Array.isArray(data));
+      console.log('[MarketPage] 数据长度:', Array.isArray(data) ? data.length : 'N/A');
+      console.log('[MarketPage] 前3条数据:', data?.slice ? data.slice(0, 3) : data);
+      
       setMarketItems(data);
       setLastUpdated(new Date());
     } catch (err) {
-      setError('获取闲置物品列表失败，请稍后重试。');
-      console.error(err);
+      const error = err as Error;
+      console.error('[MarketPage] 获取市场物品失败:', error);
+      console.error('[MarketPage] 错误详情:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+      
+      let errorMessage = '获取物品列表失败';
+      if (error.message) {
+        errorMessage += `: ${error.message}`;
+      }
+      if (error.name === 'TypeError' && error.message.includes('fetch')) {
+        errorMessage += ' (网络连接问题)';
+      }
+      
+      setError(errorMessage);
     } finally {
       setIsDataLoading(false);
       setIsRefreshing(false);
     }
   }, []);
 
+  // 处理分享链接 - 如果URL中有itemId，则获取并显示该物品详情
   useEffect(() => {
-    if (!isLoadingAuth) {
+    const handleSharedItem = async () => {
+      if (itemId && !isLoadingAuth) {
+        try {
+          setIsLoading(true);
+          const item = await getMarketItem(itemId);
+          setSelectedItem(item);
+          // 同时加载所有物品列表
+          await fetchMarketItemsData(false);
+          setupAutoRefresh();
+        } catch (error) {
+          console.error('获取分享物品失败:', error);
+          setError('物品不存在或已被删除');
+          // 如果物品不存在，导航到市场页面
+          navigate('/market', { replace: true });
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    if (itemId) {
+      handleSharedItem();
+    } else if (!isLoadingAuth) {
       fetchMarketItemsData();
       setupAutoRefresh();
     }
-  }, [isLoadingAuth, fetchMarketItemsData]);
+  }, [itemId, isLoadingAuth, fetchMarketItemsData, navigate]);
 
   const handleManualRefresh = useCallback(() => {
     fetchMarketItemsData(true);
@@ -295,18 +279,13 @@ const MarketPage: React.FC = () => {
     }
   }, [isLoadingAuth]);
 
-  const handleAddItem = async (itemData: Omit<MarketItem, 'id' | 'postedDate'>) => {
-    if (!currentUser) {
-      alert("请先登录后再发布物品。");
-      return;
-    }
+  const handleAddItem = async (itemData: Omit<MarketItem, 'id' | 'postedDate'>, files: File[]) => {
     try {
-      await addMarketItem(itemData);
+      await addMarketItem(itemData, files);
       fetchMarketItemsData(true);
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '发布物品失败，请重试。';
-      alert(`发布物品失败: ${errorMessage}`);
-      console.error('发布物品详细错误:', err);
+      alert('发布物品失败，请重试。');
+      console.error(err);
     }
   };
 
@@ -336,6 +315,27 @@ const MarketPage: React.FC = () => {
 
   const handleCloseDetails = () => {
     setSelectedItem(null);
+    // 如果是通过分享链接访问的，关闭详情后导航到市场页面
+    if (itemId) {
+      navigate('/market', { replace: true });
+    }
+  };
+
+  const handleEditItem = (item: MarketItem) => {
+    setEditingItem(item);
+  };
+
+  const handleEditSubmit = async (itemData: Omit<MarketItem, 'id' | 'postedDate'>, files: File[]) => {
+    try {
+      // TODO: 实现编辑API调用
+      console.log('编辑物品:', itemData, files);
+      alert('编辑功能正在开发中...');
+      setEditingItem(null);
+      fetchMarketItemsData(true);
+    } catch (err) {
+      alert('编辑物品失败，请重试。');
+      console.error(err);
+    }
   };
 
   if (isLoading) {
@@ -420,9 +420,21 @@ const MarketPage: React.FC = () => {
         isOpen={isMyItemsOpen}
         onClose={() => setIsMyItemsOpen(false)}
         onItemDeleted={() => fetchMarketItemsData(true)}
+        onItemUpdated={() => fetchMarketItemsData(true)}
       />
       
       <MarketItemDetailModal item={selectedItem} isOpen={!!selectedItem} onClose={handleCloseDetails} />
+
+      {/* 编辑物品表单 */}
+      {editingItem && (
+        <MarketItemForm
+          isOpen={!!editingItem}
+          onClose={() => setEditingItem(null)}
+          onSubmit={handleEditSubmit}
+          initialData={editingItem}
+          isEditing={true}
+        />
+      )}
 
       {marketItems.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-xl shadow-md">
@@ -440,13 +452,14 @@ const MarketPage: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className="space-y-6">
-          {marketItems.map((item) => (
-            <MarketItemCard 
-              key={item.id} 
-              item={item} 
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
+          {marketItems.map((item, index) => (
+            <MarketItemCard
+              key={`market-item-${item.id}-${index}`}
+              item={item}
               onAddComment={handleAddComment}
               onToggleLike={handleToggleLike}
+              onEditItem={handleEditItem}
             />
           ))}
         </div>

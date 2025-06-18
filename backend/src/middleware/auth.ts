@@ -52,15 +52,22 @@ export const optionalAuth = (req: AuthenticatedRequest, res: Response, next: Nex
 export const requireRole = (roles: UserRole[]) => {
   return (req: AuthenticatedRequest, res: Response, next: NextFunction): void => {
     if (!req.user) {
+      console.log('❌ 权限检查失败: 用户未认证');
       res.status(401).json({ success: false, message: '用户未认证' });
       return;
     }
 
+    console.log(`🔍 权限检查: 用户 ${req.user.name}, 角色 "${req.user.role}" (类型: ${typeof req.user.role}), 需要角色 [${roles.join(', ')}]`);
+    console.log(`🔍 角色比较: "${req.user.role}" === "${UserRole.ADMIN}" ? ${req.user.role === UserRole.ADMIN}`);
+    console.log(`🔍 includes检查: roles.includes("${req.user.role}") ? ${roles.includes(req.user.role)}`);
+
     if (!roles.includes(req.user.role)) {
+      console.log(`❌ 权限检查失败: 角色 "${req.user.role}" 不在允许列表中`);
       res.status(403).json({ success: false, message: '权限不足' });
       return;
     }
 
+    console.log(`✅ 权限检查通过: 用户 ${req.user.name} 具有 ${req.user.role} 权限`);
     next();
   };
 };

@@ -26,12 +26,12 @@ echo
 
 # 检查是否启用真实邮箱服务
 if echo "$CONFIG_RESPONSE" | grep -q '"EMAIL_ENABLED":"true"'; then
-    echo "✅ 真实邮箱服务已启用"
-    REAL_EMAIL=true
-else
-    echo "⚠️  当前使用模拟邮箱服务"
-    echo "   💡 验证码将在后端控制台显示"
-    REAL_EMAIL=false
+        echo "✅ 真实邮箱服务已启用"
+        REAL_EMAIL=true
+    else
+        echo "⚠️  当前使用模拟邮箱服务"
+        echo "   💡 验证码将在后端控制台显示"
+        REAL_EMAIL=false
 fi
 
 echo

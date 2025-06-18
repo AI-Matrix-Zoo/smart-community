@@ -9,7 +9,14 @@ const getDbPath = (): string => {
     return process.env.DB_PATH;
   }
   
-  // 在生产环境中使用绝对路径
+  // 优先使用绝对路径
+  const absoluteDbPath = '/root/smart-community/data/community.db';
+  if (fs.existsSync(absoluteDbPath)) {
+    console.log('Using absolute database path:', absoluteDbPath);
+    return absoluteDbPath;
+  }
+  
+  // 在生产环境中使用相对于项目根目录的路径
   if (process.env.NODE_ENV === 'production') {
     const prodDbPath = path.join(process.cwd(), 'data', 'community.db');
     console.log('Production database path:', prodDbPath);
@@ -165,7 +172,7 @@ function initializeDatabase() {
     )
   `);
 
-  // 创建二手市场表
+  // 创建市场物品表
   db.run(`
     CREATE TABLE IF NOT EXISTS market_items (
       id TEXT PRIMARY KEY,
@@ -174,19 +181,38 @@ function initializeDatabase() {
       price REAL NOT NULL,
       category TEXT NOT NULL,
       image_url TEXT,
+      image_urls TEXT, -- JSON字符串存储多图片URL数组
       seller TEXT NOT NULL,
       seller_user_id TEXT,
-      posted_date DATETIME NOT NULL,
+      posted_date TEXT NOT NULL,
       contact_info TEXT,
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (seller_user_id) REFERENCES users(id)
+      FOREIGN KEY (seller_user_id) REFERENCES users (id)
     )
-  `, (err) => {
+  `, (err: any) => {
     if (err) {
-      console.error('Error creating market_items table:', err);
+      console.error('创建市场物品表失败:', err);
     } else {
-      console.log('Market_items table created/verified successfully');
+      console.log('✅ 市场物品表创建成功');
+      
+      // 检查是否已有演示数据
+      db.get('SELECT COUNT(*) as count FROM market_items', (err: any, row: any) => {
+        if (!err && row.count === 0) {
+          console.log('📦 插入市场物品演示数据...');
+          
+          // 插入初始市场物品
+          db.run(`
+            INSERT INTO market_items (id, title, description, price, category, image_url, image_urls, seller, seller_user_id, posted_date, contact_info)
+            VALUES ('m1', '[演示数据] 九成新婴儿床', '宝宝长大了用不上了，实木婴儿床，几乎全新，带床垫。\n\n注：这是演示数据，仅用于功能展示，请勿联系。', 300, '母婴用品', 'https://picsum.photos/seed/m1/400/300', '["https://picsum.photos/seed/m1/400/300", "https://picsum.photos/seed/m1b/400/300"]', '业主赵 (演示用户)', 'user1', ?, '微信: demo123（演示联系方式）')
+          `, [new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()]);
+
+          db.run(`
+            INSERT INTO market_items (id, title, description, price, category, image_url, image_urls, seller, seller_user_id, posted_date, contact_info)
+            VALUES ('m2', '[演示数据] 小米空气净化器', '搬家处理，使用一年，功能正常，滤芯刚换。\n\n注：这是演示数据，仅用于功能展示，请勿联系。', 450, '家具家电', 'https://picsum.photos/seed/m2/400/300', '["https://picsum.photos/seed/m2/400/300", "https://picsum.photos/seed/m2b/400/300", "https://picsum.photos/seed/m2c/400/300"]', '李女士 (演示用户)', 'user2', ?, '电话: 138****1234（演示联系方式）')
+          `, [new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()]);
+
+          console.log('✅ 市场物品演示数据插入完成');
+        }
+      });
     }
   });
 
@@ -403,12 +429,6 @@ function insertInitialData() {
         INSERT INTO suggestion_progress (suggestion_id, update_text, date, by_user, by_role)
         VALUES ('s2', '物业已收到建议，正在评估可行性。（演示数据）', ?, '物业系统', 'PROPERTY')
       `, [new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString()]);
-
-      // 插入初始市场物品
-      db.run(`
-        INSERT INTO market_items (id, title, description, price, category, image_url, seller, posted_date, contact_info)
-        VALUES ('m1', '[演示数据] 九成新婴儿床', '宝宝长大了用不上了，实木婴儿床，几乎全新，带床垫。\n\n注：这是演示数据，仅用于功能展示，请勿联系。', 300, '母婴用品', 'https://picsum.photos/seed/m1/400/300', '业主赵 (演示用户)', ?, '微信: demo123（演示联系方式）')
-      `, [new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString()]);
 
       // 插入初始公告
       db.run(`

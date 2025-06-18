@@ -21,12 +21,8 @@ const UserProfileForm: React.FC<UserProfileFormProps> = ({ isOpen, onClose }) =>
 
   useEffect(() => {
     if (currentUser && isOpen) {
-      // 从用户名中提取基本姓名（去掉地址部分）
-      const baseName = currentUser.name.includes('(') 
-        ? currentUser.name.substring(0, currentUser.name.indexOf('(')).trim()
-        : currentUser.name;
-      
-      setName(baseName);
+      // 直接使用name字段，不再从中提取地址信息
+      setName(currentUser.name);
       setBuilding(currentUser.building || '');
       setUnit(currentUser.unit || '');
       setRoom(currentUser.room || '');
@@ -87,30 +83,30 @@ const UserProfileForm: React.FC<UserProfileFormProps> = ({ isOpen, onClose }) =>
             基本信息（不可修改）
           </h4>
           <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="姓名"
-              value={name}
+        <Input
+          label="姓名"
+          value={name}
               readOnly
               className="bg-gray-100 cursor-not-allowed"
-            />
-            <Input
-              label="楼栋"
-              value={building}
+        />
+        <Input
+          label="楼栋"
+          value={building}
               readOnly
               className="bg-gray-100 cursor-not-allowed"
-            />
-            <Input
-              label="单元"
-              value={unit}
+        />
+        <Input
+          label="单元"
+          value={unit}
               readOnly
               className="bg-gray-100 cursor-not-allowed"
-            />
-            <Input
-              label="房间号"
-              value={room}
+        />
+        <Input
+          label="房间号"
+          value={room}
               readOnly
               className="bg-gray-100 cursor-not-allowed"
-            />
+        />
           </div>
           <p className="text-xs text-gray-500 mt-2">
             ℹ️ 姓名和住址信息在注册时确定，无法修改。如需更改请联系管理员。

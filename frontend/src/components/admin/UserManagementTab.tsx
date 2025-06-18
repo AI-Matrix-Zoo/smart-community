@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useContext } from 'react';
-import { adminGetAllUsers, adminUpdateUser, adminDeleteUser } from '../../services/apiService';
+import { adminGetAllUsers, adminUpdateUser, adminDeleteUser, adminVerifyUser, adminUnverifyUser, adminResetUserPassword } from '../../services/apiService';
 import { User, UserRole } from '../../types';
-import { Button, LoadingSpinner, Badge } from '../UIElements';
-import { PencilIcon, TrashIcon, UsersIcon } from '../Icons';
+import { Button, LoadingSpinner, Badge, Modal, Input } from '../UIElements';
+import { PencilIcon, TrashIcon, UsersIcon, EyeIcon, CheckBadgeIcon, PhotoIcon, CogIcon } from '../Icons';
 import { AuthContext } from '../../contexts/AuthContext';
 import UserEditModal from './UserEditModal';
+import IdentityImageModal from './IdentityImageModal';
 
 const UserManagementTab: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
@@ -12,6 +13,11 @@ const UserManagementTab: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [userToEdit, setUserToEdit] = useState<User | null>(null);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+  const [userToViewImage, setUserToViewImage] = useState<User | null>(null);
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [userToResetPassword, setUserToResetPassword] = useState<User | null>(null);
+  const [newPassword, setNewPassword] = useState('');
   const auth = useContext(AuthContext);
 
   const fetchUsers = useCallback(async () => {
@@ -37,7 +43,77 @@ const UserManagementTab: React.FC = () => {
     setIsEditModalOpen(true);
   };
 
-  const handleSaveUser = async (userId: string, userData: Partial<Pick<User, 'name' | 'email' | 'role' | 'building' | 'unit' | 'room'>>) => {
+  const handleViewImage = (user: User) => {
+    setUserToViewImage(user);
+    setIsImageModalOpen(true);
+  };
+
+  const handleVerifyUser = async (userId: string, userName: string) => {
+    if (window.confirm(`确定要认证用户 "${userName}" 吗？`)) {
+      try {
+        const success = await adminVerifyUser(userId);
+        if (success) {
+          fetchUsers(); // 刷新列表
+        } else {
+          alert('认证用户失败。');
+        }
+      } catch (err) {
+        alert('认证用户时出错。');
+        console.error(err);
+      }
+    }
+  };
+
+  const handleUnverifyUser = async (userId: string, userName: string) => {
+    if (window.confirm(`确定要取消认证用户 "${userName}" 吗？`)) {
+      try {
+        const success = await adminUnverifyUser(userId);
+        if (success) {
+          fetchUsers(); // 刷新列表
+        } else {
+          alert('取消认证失败。');
+        }
+      } catch (err) {
+        alert('取消认证时出错。');
+        console.error(err);
+      }
+    }
+  };
+
+  const handleResetPassword = (user: User) => {
+    setUserToResetPassword(user);
+    setNewPassword('');
+    setIsPasswordModalOpen(true);
+  };
+
+  const handlePasswordResetSubmit = async () => {
+    if (!userToResetPassword || !newPassword.trim()) {
+      alert('请输入新密码。');
+      return;
+    }
+
+    if (newPassword.length < 6) {
+      alert('密码至少需要6位字符。');
+      return;
+    }
+
+    try {
+      const success = await adminResetUserPassword(userToResetPassword.id, newPassword);
+      if (success) {
+        alert(`用户 "${userToResetPassword.name}" 的密码已成功重置。`);
+        setIsPasswordModalOpen(false);
+        setUserToResetPassword(null);
+        setNewPassword('');
+      } else {
+        alert('重置密码失败。');
+      }
+    } catch (err) {
+      alert('重置密码时出错。');
+      console.error(err);
+    }
+  };
+
+  const handleSaveUser = async (userId: string, userData: Partial<Pick<User, 'name' | 'email' | 'phone' | 'role' | 'building' | 'unit' | 'room'>>) => {
     try {
       const updatedUser = await adminUpdateUser(userId, userData);
       if (updatedUser) {
@@ -109,6 +185,8 @@ const UserManagementTab: React.FC = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">楼栋</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">单元</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">房号</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">证明材料</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">认证状态</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">操作</th>
             </tr>
           </thead>
@@ -118,7 +196,16 @@ const UserManagementTab: React.FC = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500 truncate max-w-xs">{user.id}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-900">{user.name}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
-                  {user.email || user.phone || 'N/A'}
+                  <div className="space-y-1">
+                    <div>
+                      <span className="text-xs text-gray-400">邮箱: </span>
+                      <span>{user.email || 'N/A'}</span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-gray-400">手机: </span>
+                      <span>{user.phone || 'N/A'}</span>
+                    </div>
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm">
                   <Badge color={getRoleBadgeColor(user.role)}>{user.role}</Badge>
@@ -132,15 +219,77 @@ const UserManagementTab: React.FC = () => {
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
                   {user.room || 'N/A'}
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                  {user.identity_image ? (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleViewImage(user)}
+                      className="text-blue-600 hover:text-blue-800"
+                    >
+                      <PhotoIcon className="w-4 h-4 mr-1" />
+                      查看
+                    </Button>
+                  ) : (
+                    <span className="text-gray-400">未上传</span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  {user.is_verified ? (
+                    <div className="flex items-center space-x-1">
+                      <CheckBadgeIcon className="w-4 h-4 text-green-600" />
+                      <span className="text-green-600 text-xs">已认证</span>
+                    </div>
+                  ) : (
+                    <span className="text-gray-400 text-xs">未认证</span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <div className="flex items-center space-x-2">
                   <Button variant="ghost" size="sm" onClick={() => handleEditUser(user)} aria-label="编辑用户">
                     <PencilIcon className="w-4 h-4 text-blue-600" />
                   </Button>
+                    
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleResetPassword(user)}
+                      aria-label="重置密码"
+                      className="text-purple-600 hover:text-purple-800"
+                    >
+                      <CogIcon className="w-4 h-4" />
+                    </Button>
+                    
+                    {user.role === UserRole.USER && (
+                      user.is_verified ? (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleUnverifyUser(user.id, user.name)}
+                          aria-label="取消认证"
+                          className="text-orange-600 hover:text-orange-800"
+                        >
+                          <CheckBadgeIcon className="w-4 h-4" />
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleVerifyUser(user.id, user.name)}
+                          aria-label="认证用户"
+                          className="text-green-600 hover:text-green-800"
+                        >
+                          <CheckBadgeIcon className="w-4 h-4" />
+                        </Button>
+                      )
+                    )}
+                    
                   {auth?.currentUser?.id !== user.id && (
                     <Button variant="ghost" size="sm" onClick={() => handleDeleteUser(user.id, user.name)} aria-label="删除用户">
                       <TrashIcon className="w-4 h-4 text-red-600" />
                     </Button>
                   )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -159,6 +308,55 @@ const UserManagementTab: React.FC = () => {
           userToEdit={userToEdit}
           onSave={handleSaveUser}
         />
+      )}
+
+      {isImageModalOpen && userToViewImage && (
+        <IdentityImageModal
+          isOpen={isImageModalOpen}
+          onClose={() => {
+            setIsImageModalOpen(false);
+            setUserToViewImage(null);
+          }}
+          user={userToViewImage}
+        />
+      )}
+
+      {isPasswordModalOpen && userToResetPassword && (
+        <Modal
+          isOpen={isPasswordModalOpen}
+          onClose={() => {
+            setIsPasswordModalOpen(false);
+            setUserToResetPassword(null);
+            setNewPassword('');
+          }}
+          title={`重置用户密码 - ${userToResetPassword.name}`}
+        >
+          <div className="space-y-4">
+            <Input
+              label="新密码"
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder="请输入新密码（至少6位字符）"
+              required
+            />
+            <div className="flex justify-end space-x-2">
+              <Button 
+                variant="ghost" 
+                onClick={() => {
+                  setIsPasswordModalOpen(false);
+                  setUserToResetPassword(null);
+                  setNewPassword('');
+                }}
+              >
+                取消
+              </Button>
+              <Button variant="primary" onClick={handlePasswordResetSubmit}>
+                重置密码
+              </Button>
+            </div>
+          </div>
+        </Modal>
       )}
     </div>
   );

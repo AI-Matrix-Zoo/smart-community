@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>手机端API调试工具</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 100%;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .test-section h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .info { color: #17a2b8; }
+        .warning { color: #ffc107; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>手机端API调试工具</h1>
+        
+        <div class="test-section">
+            <h3>环境信息</h3>
+            <div id="env-info"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>网络连接测试</h3>
+            <button onclick="testConnection()">测试基础连接</button>
+            <button onclick="testCORS()">测试CORS</button>
+            <div id="connection-log" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>API测试</h3>
+            <button onclick="testMarketAPI()">测试市场API</button>
+            <button onclick="testSuggestionsAPI()">测试建议API</button>
+            <button onclick="testWithAuth()">测试带认证的API</button>
+            <div id="api-log" class="log"></div>
+        </div>
+
+        <div class="test-section">
+            <h3>详细错误日志</h3>
+            <button onclick="clearLogs()">清空日志</button>
+            <div id="error-log" class="log"></div>
+        </div>
+    </div>
+
+    <script>
+        // 获取API基础地址的函数
+        function getApiBaseUrl() {
+            const hostname = window.location.hostname;
+            if (hostname === 'localhost' || hostname === '127.0.0.1') {
+                return 'http://localhost:3000';
+            } else {
+                return `http://${hostname}:3000`;
+            }
+        }
+
+        // 日志函数
+        function log(message, type = 'info', containerId = 'error-log') {
+            const logContainer = document.getElementById(containerId);
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('div');
+            logEntry.className = type;
+            logEntry.innerHTML = `[${timestamp}] ${message}`;
+            logContainer.appendChild(logEntry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // 显示环境信息
+        function showEnvironmentInfo() {
+            const info = {
+                'User Agent': navigator.userAgent,
+                '屏幕尺寸': `${screen.width}x${screen.height}`,
+                '视口尺寸': `${window.innerWidth}x${window.innerHeight}`,
+                '当前URL': window.location.href,
+                'API基础地址': getApiBaseUrl(),
+                '是否支持Fetch': typeof fetch !== 'undefined',
+                '连接类型': navigator.connection ? navigator.connection.effectiveType : '未知'
+            };
+
+            const envContainer = document.getElementById('env-info');
+            envContainer.innerHTML = Object.entries(info)
+                .map(([key, value]) => `<strong>${key}:</strong> ${value}`)
+                .join('<br>');
+        }
+
+        // 测试基础连接
+        async function testConnection() {
+            const logContainer = 'connection-log';
+            log('开始测试基础连接...', 'info', logContainer);
+            
+            try {
+                const apiUrl = getApiBaseUrl();
+                log(`测试连接到: ${apiUrl}`, 'info', logContainer);
+                
+                // 检查网络状态
+                if ('onLine' in navigator) {
+                    log(`浏览器网络状态: ${navigator.onLine ? '在线' : '离线'}`, 'info', logContainer);
+                }
+                
+                // 方法1：使用fetch
+                log('方法1：使用fetch测试...', 'info', logContainer);
+                try {
+                    const response = await fetch(`${apiUrl}/health`, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                        },
+                        cache: 'no-cache'
+                    });
+                    
+                    log(`Fetch响应状态: ${response.status} ${response.statusText}`, 'info', logContainer);
+                    log(`Fetch响应头: ${JSON.stringify([...response.headers.entries()])}`, 'info', logContainer);
+                    
+                    if (response.ok) {
+                        const data = await response.text();
+                        log(`Fetch响应内容: ${data}`, 'success', logContainer);
+                    } else {
+                        log(`Fetch连接失败: ${response.status}`, 'error', logContainer);
+                    }
+                } catch (fetchError) {
+                    log(`Fetch错误: ${fetchError.message}`, 'error', logContainer);
+                }
+                
+                // 方法2：使用XMLHttpRequest
+                log('方法2：使用XMLHttpRequest测试...', 'info', logContainer);
+                const xhr = new XMLHttpRequest();
+                xhr.open('GET', `${apiUrl}/health`, true);
+                xhr.setRequestHeader('Accept', 'application/json');
+                
+                xhr.onload = function() {
+                    log(`XHR响应状态: ${xhr.status} ${xhr.statusText}`, 'info', logContainer);
+                    log(`XHR响应头: ${xhr.getAllResponseHeaders()}`, 'info', logContainer);
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        log(`XHR响应内容: ${xhr.responseText}`, 'success', logContainer);
+                    } else {
+                        log(`XHR连接失败: ${xhr.status}`, 'error', logContainer);
+                    }
+                };
+                
+                xhr.onerror = function() {
+                    log(`XHR网络错误`, 'error', logContainer);
+                };
+                
+                xhr.ontimeout = function() {
+                    log(`XHR请求超时`, 'error', logContainer);
+                };
+                
+                xhr.timeout = 10000; // 10秒超时
+                xhr.send();
+                
+            } catch (error) {
+                log(`连接错误: ${error.message}`, 'error', logContainer);
+                log(`错误详情: ${error.stack}`, 'error', logContainer);
+            }
+        }
+
+        // 测试CORS
+        async function testCORS() {
+            const logContainer = 'connection-log';
+            log('开始测试CORS...', 'info', logContainer);
+            
+            try {
+                const apiUrl = getApiBaseUrl();
+                log(`CORS测试URL: ${apiUrl}/api/market`, 'info', logContainer);
+                
+                // 方法1：直接GET请求（不是OPTIONS预检）
+                log('方法1：直接GET请求测试...', 'info', logContainer);
+                try {
+                    const directResponse = await fetch(`${apiUrl}/api/market`, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                        }
+                    });
+                    log(`直接GET响应状态: ${directResponse.status}`, directResponse.ok ? 'success' : 'error', logContainer);
+                } catch (directError) {
+                    log(`直接GET请求失败: ${directError.message}`, 'error', logContainer);
+                }
+                
+                // 方法2：OPTIONS预检请求
+                log('方法2：OPTIONS预检请求测试...', 'info', logContainer);
+                const response = await fetch(`${apiUrl}/api/market`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': window.location.origin,
+                        'Access-Control-Request-Method': 'GET',
+                        'Access-Control-Request-Headers': 'Content-Type'
+                    }
+                });
+                
+                log(`CORS预检响应状态: ${response.status}`, 'info', logContainer);
+                log(`CORS响应头: ${JSON.stringify([...response.headers.entries()])}`, 'info', logContainer);
+                
+                if (response.ok) {
+                    log('CORS预检成功', 'success', logContainer);
+                } else {
+                    log('CORS预检失败', 'error', logContainer);
+                }
+            } catch (error) {
+                log(`CORS测试错误: ${error.message}`, 'error', logContainer);
+                log(`错误类型: ${error.name}`, 'error', logContainer);
+                log(`错误详情: ${error.stack}`, 'error', logContainer);
+                
+                // 额外的网络诊断
+                log('开始网络诊断...', 'info', logContainer);
+                
+                // 测试基础连接
+                try {
+                    const basicTest = await fetch(`${getApiBaseUrl()}/health`, {
+                        method: 'GET',
+                        mode: 'cors',
+                        cache: 'no-cache'
+                    });
+                    log(`基础连接测试: ${basicTest.status}`, 'info', logContainer);
+                } catch (basicError) {
+                    log(`基础连接也失败: ${basicError.message}`, 'error', logContainer);
+                }
+                
+                // 测试不同的fetch模式
+                try {
+                    const noCorsTest = await fetch(`${getApiBaseUrl()}/health`, {
+                        method: 'GET',
+                        mode: 'no-cors'
+                    });
+                    log(`no-cors模式测试: ${noCorsTest.type}`, 'info', logContainer);
+                } catch (noCorsError) {
+                    log(`no-cors模式也失败: ${noCorsError.message}`, 'error', logContainer);
+                }
+            }
+        }
+
+        // 测试市场API
+        async function testMarketAPI() {
+            const logContainer = 'api-log';
+            log('开始测试市场API...', 'info', logContainer);
+            
+            try {
+                const apiUrl = getApiBaseUrl();
+                const url = `${apiUrl}/api/market`;
+                log(`请求URL: ${url}`, 'info', logContainer);
+                
+                // 方法1：使用fetch
+                log('方法1：使用fetch测试市场API...', 'info', logContainer);
+                try {
+                    const response = await fetch(url, {
+                        method: 'GET',
+                        headers: {
+                            'Accept': 'application/json',
+                            'Content-Type': 'application/json'
+                        },
+                        cache: 'no-cache'
+                    });
+                    
+                    log(`Fetch响应状态: ${response.status} ${response.statusText}`, 'info', logContainer);
+                    log(`Fetch响应头: ${JSON.stringify([...response.headers.entries()])}`, 'info', logContainer);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        log(`数据类型: ${Array.isArray(data) ? 'Array' : typeof data}`, 'info', logContainer);
+                        log(`数据长度: ${Array.isArray(data) ? data.length : 'N/A'}`, 'info', logContainer);
+                        log(`前3条数据: ${JSON.stringify(data.slice ? data.slice(0, 3) : data, null, 2)}`, 'success', logContainer);
+                    } else {
+                        const errorText = await response.text();
+                        log(`Fetch API错误: ${response.status} - ${errorText}`, 'error', logContainer);
+                    }
+                } catch (fetchError) {
+                    log(`Fetch市场API错误: ${fetchError.message}`, 'error', logContainer);
+                    
+                    // 方法2：使用XMLHttpRequest作为备选
+                    log('方法2：使用XMLHttpRequest测试市场API...', 'info', logContainer);
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('GET', url, true);
+                    xhr.setRequestHeader('Accept', 'application/json');
+                    xhr.setRequestHeader('Content-Type', 'application/json');
+                    
+                    xhr.onload = function() {
+                        log(`XHR响应状态: ${xhr.status} ${xhr.statusText}`, 'info', logContainer);
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            try {
+                                const data = JSON.parse(xhr.responseText);
+                                log(`XHR数据类型: ${Array.isArray(data) ? 'Array' : typeof data}`, 'info', logContainer);
+                                log(`XHR数据长度: ${Array.isArray(data) ? data.length : 'N/A'}`, 'info', logContainer);
+                                log(`XHR前3条数据: ${JSON.stringify(data.slice ? data.slice(0, 3) : data, null, 2)}`, 'success', logContainer);
+                            } catch (parseError) {
+                                log(`XHR JSON解析错误: ${parseError.message}`, 'error', logContainer);
+                                log(`XHR原始响应: ${xhr.responseText.substring(0, 500)}`, 'info', logContainer);
+                            }
+                        } else {
+                            log(`XHR API错误: ${xhr.status} - ${xhr.responseText}`, 'error', logContainer);
+                        }
+                    };
+                    
+                    xhr.onerror = function() {
+                        log(`XHR网络错误`, 'error', logContainer);
+                    };
+                    
+                    xhr.ontimeout = function() {
+                        log(`XHR请求超时`, 'error', logContainer);
+                    };
+                    
+                    xhr.timeout = 15000; // 15秒超时
+                    xhr.send();
+                }
+                
+            } catch (error) {
+                log(`市场API测试错误: ${error.message}`, 'error', logContainer);
+                log(`错误详情: ${error.stack}`, 'error', logContainer);
+            }
+        }
+
+        // 测试建议API
+        async function testSuggestionsAPI() {
+            const logContainer = 'api-log';
+            log('开始测试建议API...', 'info', logContainer);
+            
+            try {
+                const apiUrl = getApiBaseUrl();
+                const url = `${apiUrl}/api/suggestions`;
+                log(`请求URL: ${url}`, 'info', logContainer);
+                
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                log(`响应状态: ${response.status} ${response.statusText}`, 'info', logContainer);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`数据类型: ${Array.isArray(data) ? 'Array' : typeof data}`, 'info', logContainer);
+                    log(`数据长度: ${Array.isArray(data) ? data.length : 'N/A'}`, 'info', logContainer);
+                    log(`前3条数据: ${JSON.stringify(data.slice ? data.slice(0, 3) : data, null, 2)}`, 'success', logContainer);
+                } else {
+                    const errorText = await response.text();
+                    log(`API错误: ${response.status} - ${errorText}`, 'error', logContainer);
+                }
+            } catch (error) {
+                log(`建议API错误: ${error.message}`, 'error', logContainer);
+                log(`错误详情: ${error.stack}`, 'error', logContainer);
+            }
+        }
+
+        // 测试带认证的API
+        async function testWithAuth() {
+            const logContainer = 'api-log';
+            log('开始测试带认证的API...', 'info', logContainer);
+            
+            const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+            log(`本地Token: ${token ? '存在' : '不存在'}`, 'info', logContainer);
+            
+            try {
+                const apiUrl = getApiBaseUrl();
+                const headers = {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                };
+                
+                if (token) {
+                    headers['Authorization'] = `Bearer ${token}`;
+                }
+                
+                const response = await fetch(`${apiUrl}/api/market`, {
+                    method: 'GET',
+                    headers: headers
+                });
+                
+                log(`带认证响应状态: ${response.status}`, 'info', logContainer);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`认证API成功，数据长度: ${Array.isArray(data) ? data.length : 'N/A'}`, 'success', logContainer);
+                } else {
+                    log(`认证API失败: ${response.status}`, 'error', logContainer);
+                }
+            } catch (error) {
+                log(`认证API错误: ${error.message}`, 'error', logContainer);
+            }
+        }
+
+        // 清空日志
+        function clearLogs() {
+            document.getElementById('error-log').innerHTML = '';
+            document.getElementById('api-log').innerHTML = '';
+            document.getElementById('connection-log').innerHTML = '';
+        }
+
+        // 页面加载时显示环境信息
+        window.addEventListener('load', function() {
+            showEnvironmentInfo();
+            log('手机端调试工具已加载', 'success');
+        });
+
+        // 捕获全局错误
+        window.addEventListener('error', function(event) {
+            log(`全局错误: ${event.error.message}`, 'error');
+            log(`错误位置: ${event.filename}:${event.lineno}:${event.colno}`, 'error');
+        });
+
+        // 捕获未处理的Promise错误
+        window.addEventListener('unhandledrejection', function(event) {
+            log(`未处理的Promise错误: ${event.reason}`, 'error');
+        });
+    </script>
+</body>
+</html> 

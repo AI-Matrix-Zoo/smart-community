@@ -6,12 +6,13 @@ interface UserEditModalProps {
   isOpen: boolean;
   onClose: () => void;
   userToEdit: User | null;
-  onSave: (userId: string, userData: Partial<Pick<User, 'name' | 'email' | 'role' | 'building' | 'unit' | 'room'>>) => Promise<void>;
+  onSave: (userId: string, userData: Partial<Pick<User, 'name' | 'email' | 'phone' | 'role' | 'building' | 'unit' | 'room'>>) => Promise<void>;
 }
 
 const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, userToEdit, onSave }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [role, setRole] = useState<UserRole>(UserRole.USER);
   const [building, setBuilding] = useState('');
   const [unit, setUnit] = useState('');
@@ -20,8 +21,9 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, userToEd
 
   useEffect(() => {
     if (userToEdit) {
-      setName(userToEdit.name.includes('(') ? userToEdit.name.substring(0, userToEdit.name.indexOf('(')).trim() : userToEdit.name);
+      setName(userToEdit.name);
       setEmail(userToEdit.email || '');
+      setPhone(userToEdit.phone || '');
       setRole(userToEdit.role);
       setBuilding(userToEdit.building || '');
       setUnit(userToEdit.unit || '');
@@ -35,25 +37,29 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, userToEd
     setFormError(null);
     if (!userToEdit) return;
 
-    if (!name.trim() || !email.trim()) {
-      setFormError('姓名和邮箱不能为空。');
+    if (!name.trim()) {
+      setFormError('姓名不能为空。');
       return;
     }
     
-    // Basic email validation
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    // 验证邮箱格式（如果填写了）
+    if (email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setFormError('请输入有效的邮箱地址。');
-        return;
+      return;
+    }
+
+    // 验证手机号格式（如果填写了）
+    if (phone.trim() && !/^1[3-9]\d{9}$/.test(phone.trim())) {
+      setFormError('请输入有效的手机号。');
+      return;
     }
     
     let finalName = name.trim();
-    if (role === UserRole.USER && building.trim() && unit.trim() && room.trim()) {
-        finalName = `${name.trim()} (${building.trim()}-${unit.trim()}-${room.trim()})`;
-    }
 
-    const updatedData: Partial<Pick<User, 'name' | 'email' | 'role' | 'building' | 'unit' | 'room'>> = {
+    const updatedData: Partial<Pick<User, 'name' | 'email' | 'phone' | 'role' | 'building' | 'unit' | 'room'>> = {
       name: finalName,
-      email: email.trim(),
+      email: email.trim() || undefined,
+      phone: phone.trim() || undefined,
       role,
     };
     if (role === UserRole.USER) {
@@ -84,14 +90,24 @@ const UserEditModal: React.FC<UserEditModalProps> = ({ isOpen, onClose, userToEd
           onChange={(e) => setName(e.target.value)}
           required
         />
-        <Input
-          label="邮箱地址"
-          id="user-edit-email"
-          type="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <Input
+            label="邮箱地址（可选）"
+            id="user-edit-email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="如：user@example.com"
+          />
+          <Input
+            label="手机号（可选）"
+            id="user-edit-phone"
+            type="tel"
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
+            placeholder="如：13800138000"
+          />
+        </div>
         <Select
           label="用户角色"
           id="user-edit-role"
