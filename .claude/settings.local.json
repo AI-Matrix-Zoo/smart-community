@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(ls:*)",
+      "Bash(find:*)",
+      "Bash(nginx:*)",
+      "Bash(systemctl reload:*)",
+      "Bash(curl:*)"
+    ],
+    "deny": []
+  }
+}
